@@ -1,0 +1,32 @@
+---
+title: "Data 3 HW 1"
+author: "Sean Duan"
+date: "8/31/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1.
+
+The advantages of a flexible approach is that you are more able to adapt to potential nonlinearity in your data, additionally, as you increase your flexibilty, your training MSE continues to improve. A more flexible approach would be preferred if you are unable to make parametric assumptions of your dataset, and are able to accept higher variance in exchange for potentially lower bias. A less flexible approach would be preferred if you believe your data to fall neatly in line as a linear model, and are confident in making the parametric assumption with regards to the form of your model, additionally, if you are concerned with potentially overfitting your data, a less flexible approach would be ideal.
+
+## 2.
+
+A parametric statistical learning approach allows you to simplify the process of determining what your model, f, is. By allowing you to assume a given form for the function, the only remaining thing to estimate are the values for the parameters of that given form. Concerns with the parametric approach arise when you consider it may be unlikely that the form you assume for f does not indeed fit the true, unknown, form for f that exists. A non-parametric statistical learning approach makes no assumptions about the form of f, which allows f to be in a broader variety of forms, hopefully leading it to match the true unknown form of the function f. The advantages and disadvantages of choosing a parametric vs a non parametric approach are as follows: With a parametric approach, you need a great deal less observations to estimate f, as you are reducing the problem of estimation of f to a simple concern of finding the values of a small number of parameters, however, your disadvantage is that you potentially do not have an acceptable quality of estimation of the true functional form of f, as you could have with a non-parametric approach.
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
