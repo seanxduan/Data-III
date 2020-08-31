@@ -17,6 +17,15 @@ The advantages of a flexible approach is that you are more able to adapt to pote
 
 A parametric statistical learning approach allows you to simplify the process of determining what your model, f, is. By allowing you to assume a given form for the function, the only remaining thing to estimate are the values for the parameters of that given form. Concerns with the parametric approach arise when you consider it may be unlikely that the form you assume for f does not indeed fit the true, unknown, form for f that exists. A non-parametric statistical learning approach makes no assumptions about the form of f, which allows f to be in a broader variety of forms, hopefully leading it to match the true unknown form of the function f. The advantages and disadvantages of choosing a parametric vs a non parametric approach are as follows: With a parametric approach, you need a great deal less observations to estimate f, as you are reducing the problem of estimation of f to a simple concern of finding the values of a small number of parameters, however, your disadvantage is that you potentially do not have an acceptable quality of estimation of the true functional form of f, as you could have with a non-parametric approach.
 
+## 3
+
+### E
+
+Looking at the scatterplot matrix, it looks like the most highly related factors are area and perimeter, area and length of kernel, area and width of kernel, perimeter and length of kernel, perimeter and width of kernel, and length of kernel groove and length of kernel.  
+
+It looks like area, perimeter, and length of kernel groove are the best at distinguishing type.
+
+
 ```{r cars}
 summary(cars)
 ```
