@@ -44,6 +44,8 @@ p3_f3 + geom_boxplot() + geom_jitter(color = "black", size = 0.4, alpha = 0.9)+
 #g
 my_cols <- c("#00AFBB", "#E7B800", "#FC4E07")  
 pairs(seeds, col = my_cols[seeds$Type])
+<<<<<<< HEAD
 
 #4
+
 
