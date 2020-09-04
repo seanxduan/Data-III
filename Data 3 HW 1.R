@@ -53,6 +53,9 @@ pairs(seeds, col = my_cols[seeds$Type])
 library(MASS)
 ?Boston
 Boston<-Boston
+Boston_2<-Boston^2
+Boston_3<-Boston^3
+
 Boston$chas <- factor(Boston$chas)
 
 b_m1<-lm(crim~zn, data = Boston)
@@ -190,4 +193,79 @@ b_m14<-lm(crim~., data = Boston)
 summary(b_m14)
 
 #C
-single_reg<-c(coef(b_m1)[2], coef(b_m2)[2])
+single_reg<-c(coef(b_m1)[[2]], coef(b_m2)[[2]],coef(b_m3)[[2]],coef(b_m4)[[2]],coef(b_m5)[[2]],coef(b_m6)[[2]],coef(b_m7)[[2]],
+              coef(b_m8)[[2]],coef(b_m9)[[2]],coef(b_m10)[[2]],coef(b_m11)[[2]],coef(b_m12)[[2]],coef(b_m13)[[2]])
+single_reg<-as.data.frame(single_reg)
+
+multiple_reg<-b_m14[[1]]
+multiple_reg<-as.data.frame(multiple_reg)
+multiple_reg<-multiple_reg[-1,]
+multiple_reg<-as.data.frame(multiple_reg)
+
+names<-names((b_m14$coefficients))
+names<-as.data.frame(names)
+names<-names[-1,]
+names<-as.data.frame(names)
+
+regression_plot<-cbind(single_reg, multiple_reg,names)
+
+
+ggplot(regression_plot, aes(x = single_reg, y = multiple_reg, col = names)) + 
+  geom_jitter() + 
+  labs(title = "Simple vs Multiple Regression Coefficients", 
+       subtitle = "For linear models predicting 'crim'", 
+       x = "Simple Coefficient", 
+       y = "Multiple Coefficient")  
+
+#D
+library(tidyverse)
+P_value_x <- c()
+P_value_x2 <- c()
+P_value_x3 <- c()
+R2 <- c()
+y <- Boston$crim
+
+for (i in 1:ncol(Boston)) {
+  x <- Boston[ ,i]
+  if (is.numeric(x)) { 
+    model <- lm(y ~ x + I(x^2) + I(x^3))
+    if (!identical(y, x)) {
+      P_value_x[i] <- summary(model)$coefficients[2, 4]
+      P_value_x2[i] <- summary(model)$coefficients[3, 4]
+      P_value_x3[i] <- summary(model)$coefficients[4, 4]
+      R2[i] <- summary(model)$r.squared 
+    }
+  } else {
+    P_value_x[i] <- NA
+    P_value_x2[i] <- NA
+    P_value_x3[i] <- NA
+    R2[i] <- NA
+  }
+}
+
+data.frame(varname = names(Boston),
+           R2 = round(R2, 5),
+           P_value_x = round(P_value_x, 10),
+           P_value_x2 = round(P_value_x2, 10), 
+           P_value_x3 = round(P_value_x3, 10)) %>%
+  filter(!varname %in% c("crim", "chas")) %>%
+  arrange(desc(R2)) %>%
+  mutate(relationship = case_when(P_value_x3 < 0.05 ~ "Cubic", 
+                                  P_value_x2 < 0.05 ~ "Quadratic", 
+                                  P_value_x < 0.05 ~ "Linear", 
+                                  TRUE ~ "No Relationship"))
+
+#test code for my own try
+
+Boston<-Boston
+
+n<-14
+my_lms <- lapply(2:n, function(x) lm(Boston$crim ~ Boston[,x] + Boston_2[,x] + Boston_3[,x] ))
+summaries <- lapply(my_lms, summary)
+print(summaries)
+
+testreg<-lm(crim ~ zn + I(zn^2) + I(zn^3), data = Boston)
+summary(testreg)
+?I
+#ok, this works, note that we can't have CHAS as a factor while doing this b/c it breaks the code, and that we cant
+#have our my lms set using I b/c it is not defined b/c of singularities
