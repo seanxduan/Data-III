@@ -52,9 +52,9 @@ pairs(seeds, col = my_cols[seeds$Type])
 #each single regression followed by code for plots
 library(MASS)
 ?Boston
-Boston<-Boston
-Boston_2<-Boston^2
-Boston_3<-Boston^3
+Bostons<-Boston
+Boston_2<-Bostons^2
+Boston_3<-Bostons^3
 
 Boston$chas <- factor(Boston$chas)
 
@@ -260,7 +260,8 @@ data.frame(varname = names(Boston),
 Boston<-Boston
 
 n<-14
-my_lms <- lapply(2:n, function(x) lm(Boston$crim ~ Boston[,x] + Boston_2[,x] + Boston_3[,x] ))
+my_lms <- lapply(2:n, function(x) lm(Bostons$crim ~ Bostons[,x] + Boston_2[,x] + Boston_3[,x] ))
+#makes a function x, the function is defined afterward. 
 summaries <- lapply(my_lms, summary)
 print(summaries)
 
@@ -269,3 +270,9 @@ summary(testreg)
 ?I
 #ok, this works, note that we can't have CHAS as a factor while doing this b/c it breaks the code, and that we cant
 #have our my lms set using I b/c it is not defined b/c of singularities
+
+testlist<-list(NA)
+for (i in 2:ncol(Bostons)){
+  testlist[[i-1]]<-summary(lm(Bostons$crim ~ Bostons[,i] + Boston_2[,i] + Boston_3[,i] ))
+}
+print(testlist)
