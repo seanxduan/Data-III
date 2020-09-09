@@ -41,3 +41,58 @@ names(lda.pred)
 lda.class=lda.pred$class
 table(lda.class ,Direction.2005)
 mean(lda.class==Direction.2005)
+
+sum(lda.pred$posterior[,1]>=.5)
+sum(lda.pred$posterior[,1]<.5)
+lda.pred$class
+
+#the code above predicts the guess that our lda pred shoots out!
+lda.pred$posterior [1:20,1]
+lda.class [1:20]
+
+min(lda.pred$posterior[,1])
+
+#QDA work
+qda.fit=qda(Direction∼Lag1+Lag2 ,data=Smarket ,subset=train)
+qda.fit
+
+qda.class=predict (qda.fit ,Smarket.2005) $class
+table(qda.class ,Direction.2005)
+
+mean(qda.class==Direction.2005)
+
+#KNN work
+library(class)
+#so we have p = 2 here?
+train.X=cbind(Lag1 ,Lag2)[train ,]
+test.X=cbind(Lag1 ,Lag2)[!train ,]
+#This code is the code for the 'outcome' which we use to train our KNN?
+train.Direction =Direction [train]
+set.seed(1)
+?knn
+knn.pred=knn(train.X,test.X,train.Direction ,k=1)
+table(knn.pred, Direction.2005)
+mean(knn.pred==Direction.2005)
+
+knn.pred=knn(train.X,test.X,train.Direction ,k=3)
+table(knn.pred, Direction.2005)
+mean(knn.pred==Direction.2005)
+
+
+#caravan example
+library(ISLR)
+attach(Caravan)
+standardized.X=scale(Caravan [,-86])
+
+test=1:1000
+train.X= standardized.X[-test ,]
+test.X= standardized.X[test ,]
+train.Y=Purchase [-test]
+test.Y=Purchase [test]
+set.seed(1)
+
+knn.pred=knn(train.X,test.X,train.Y,k=1)
+table(knn.pred, test.Y)
+mean(knn.pred==test.Y)
+
+mean(test.Y!=knn.pred)

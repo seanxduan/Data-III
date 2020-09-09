@@ -276,3 +276,98 @@ for (i in 2:ncol(Bostons)){
   testlist[[i-1]]<-summary(lm(Bostons$crim ~ Bostons[,i] + Boston_2[,i] + Boston_3[,i] ))
 }
 print(testlist)
+
+#7
+#a
+library(plyr)
+tumor<-read.csv("tumor.csv")
+tumor$Outcome<-revalue(tumor$Diagnosis, c("Malignant" = 1, "Benign" = 0))
+tumor$Outcome<-as.numeric(tumor$Outcome)
+pairs(tumor[,-1])
+tumor$Diagnosis<-as.factor(tumor$Diagnosis)
+
+#radius, perimeter, and concave points seem most related to outcome
+#features highly related, radius and perimter, radius and area, area highly so
+#less so but still strongly perimter,concavity/concave points, and compactness/concavity
+
+#b
+set.seed(1)
+test=1:512
+train_tumor<-tumor[test,]
+test_tumor<-tumor[-test,]
+nrow(test_tumor)
+#c
+tumor_logistic<-glm(Outcome~Radius+Symmetry+Concave.Points, data = train_tumor, family = binomial)
+
+tumor_logistic<-glm(Diagnosis~Radius+Symmetry+Concave.Points, data = train_tumor, family = binomial)
+summary(tumor_logistic)
+tumor_logistic_probs<-predict(tumor_logistic, test_tumor,type = "response")
+?predict
+tumor_logistic_probs
+tumor_logistic_pred<-rep("Benign", 57)
+tumor_logistic_pred[tumor_logistic_probs >.5]= "Malignant"
+table(tumor_logistic_pred, test_tumor$Diagnosis)
+
+mean(tumor_logistic_pred==test_tumor$Diagnosis)
+1-mean(tumor_logistic_pred==test_tumor$Diagnosis)
+#misclassification rate is 3ish%
+
+tumor_logistic_pred2<-rep("Benign", 57)
+tumor_logistic_pred2[tumor_logistic_probs >.25]= "Malignant"
+table(tumor_logistic_pred2, test_tumor$Diagnosis)
+
+mean(tumor_logistic_pred2==test_tumor$Diagnosis)
+1-mean(tumor_logistic_pred2==test_tumor$Diagnosis)
+#none of the errors were it said bening and actually malignant
+#thus rate false negative very small, 
+#some it called beningn were malignant
+#misclass rate is 5ish%
+
+#e
+library(MASS)
+tumor_lda<-lda(Diagnosis~Radius+Symmetry+Concave.Points, data = train_tumor)
+tumor_lda
+tumor_lda_pred<-predict(tumor_lda, test_tumor)
+tumor_lda_pred
+tumor_lda_class<-tumor_lda_pred$class
+
+table(tumor_lda_class, test_tumor$Diagnosis)
+1-mean(tumor_lda_class==test_tumor$Diagnosis)
+#5%ish error
+
+#f QDA
+tumor_qda<-qda(Diagnosis~Radius+Symmetry+Concave.Points, data = train_tumor)
+
+tumor_qda_class<-predict(tumor_qda, test_tumor)$class
+
+table(tumor_qda_class, test_tumor$Diagnosis)
+1-mean(tumor_qda_class==test_tumor$Diagnosis)
+#3ish% error rate
+
+library(class)
+train_tumor_x<-cbind(train_tumor$Radius,train_tumor$Symmetry,train_tumor$Concave.Points)
+test_tumor_x<-cbind(test_tumor$Radius,test_tumor$Symmetry,test_tumor$Concave.Points)
+train_tumor_direction<-train_tumor$Diagnosis
+
+tumor_knn_1<-knn(train_tumor_x,test_tumor_x,train_tumor_direction ,k=1)
+table(tumor_knn_1 , test_tumor$Diagnosis)
+1-mean(tumor_knn_1==test_tumor$Diagnosis)
+
+tumor_knn_2<-knn(train_tumor_x,test_tumor_x,train_tumor_direction ,k=2)
+table(tumor_knn_2 , test_tumor$Diagnosis)
+1-mean(tumor_knn_2==test_tumor$Diagnosis)
+
+tumor_knn_3<-knn(train_tumor_x,test_tumor_x,train_tumor_direction ,k=3)
+table(tumor_knn_3 , test_tumor$Diagnosis)
+1-mean(tumor_knn_3==test_tumor$Diagnosis)
+
+tumor_knn_4<-knn(train_tumor_x,test_tumor_x,train_tumor_direction ,k=4)
+table(tumor_knn_4 , test_tumor$Diagnosis)
+1-mean(tumor_knn_4==test_tumor$Diagnosis)
+
+
+#8
+median(Boston$crim)
+#add this as a vector? where either true or calse
+Boston$direction<-rep("down", 506)
+Boston$direction[Boston$crim >median(Boston$crim)]=" Up"
