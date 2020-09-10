@@ -6,7 +6,12 @@ output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(plyr)
+library(ggplot2)
+library(MASS)
+library(ISLR)
+library(class)
 ```
 
 ## 1.
@@ -18,24 +23,516 @@ The advantages of a flexible approach is that you are more able to adapt to pote
 A parametric statistical learning approach allows you to simplify the process of determining what your model, f, is. By allowing you to assume a given form for the function, the only remaining thing to estimate are the values for the parameters of that given form. Concerns with the parametric approach arise when you consider it may be unlikely that the form you assume for f does not indeed fit the true, unknown, form for f that exists. A non-parametric statistical learning approach makes no assumptions about the form of f, which allows f to be in a broader variety of forms, hopefully leading it to match the true unknown form of the function f. The advantages and disadvantages of choosing a parametric vs a non parametric approach are as follows: With a parametric approach, you need a great deal less observations to estimate f, as you are reducing the problem of estimation of f to a simple concern of finding the values of a small number of parameters, however, your disadvantage is that you potentially do not have an acceptable quality of estimation of the true functional form of f, as you could have with a non-parametric approach.
 
 ## 3
+### A
+```{r 3a}
+#a.
+seeds<-read.csv("seeds.csv")
+seeds$Type<-as.factor(seeds$Type)
+
+seeds$Type<-revalue(seeds$Type, c("1" = "Kama", "2" = "Rosa", "3" = "Canadian"))
+
+levels(seeds$Type)
+```
+### B
+```{r 3b}
+#b.
+summary(seeds)
+```
+
+### C
+```{r 3c}
+count(seeds$perimeter > 15)
+71/210
+```
+
+
+### D
+```{r 3d}
+which.max(seeds$asymmetry.coefficient)
+seeds[which.max(seeds$asymmetry.coefficient),]
+```
+Entry #204, and the type is Canadian
 
 ### E
+```{r 3e}
+pairs(seeds)
+```
 
 Looking at the scatterplot matrix, it looks like the most highly related factors are area and perimeter, area and length of kernel, area and width of kernel, perimeter and length of kernel, perimeter and width of kernel, and length of kernel groove and length of kernel.  
 
 It looks like area, perimeter, and length of kernel groove are the best at distinguishing type.
 
+### F
+```{r 3f}
+p3_f1<-ggplot(data =seeds, aes(x=Area, y=Type, fill=Type ))
+p3_f1 + geom_boxplot() + geom_jitter(color = "black", size = 0.4, alpha = 0.9)+
+  ggtitle("Boxplot of Area against Type") + xlab("Area") + ylab("Type")
 
-```{r cars}
-summary(cars)
+p3_f2<-ggplot(data =seeds, aes(x=perimeter, y=Type, fill=Type ))
+p3_f2 + geom_boxplot() + geom_jitter(color = "black", size = 0.4, alpha = 0.9)+
+  ggtitle("Boxplot of Perimeter against Type") + xlab("Perimeter") + ylab("Type")
+
+p3_f3<-ggplot(data =seeds, aes(x=length.of.kernel.groove, y=Type, fill=Type ))
+p3_f3 + geom_boxplot() + geom_jitter(color = "black", size = 0.4, alpha = 0.9)+
+  ggtitle("Boxplot of Length of Kernel Groove Against Type") + xlab("Length of Kernel Groove") + ylab("Type")
+
 ```
 
-## Including Plots
+Looking at these plots I would like to look at Area and Perimeter as our predictors variables in a model for Kernal type based on these plots. The reasonining behind this is when you look at the graph, there is clear separation between all three groups on both the variables examined. Following a clear trend of Canadian being smaller than Kama, which is smaller than Rosa.
 
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+### G
+```{r 3g}
+my_cols <- c("#00AFBB", "#E7B800", "#FC4E07")  
+pairs(seeds, col = my_cols[seeds$Type])
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## 4
+```{r 4}
+
+
+
+```
+
+$$   \hat{y_a}  = x_a\hat{\beta} $$
+     
+$$ = x_a \frac{\sum_{b=1}^{n}x_by_b}{\sum_{c=1}^{n}x_c^2} $$
+We can replace our $\hat{\beta}$ with our given information. Also note that each of our variables which we are choosing to index has it's own index variable, either a, b, or c.
+
+$$ = \frac{\sum_{b=1}^{n}x_ax_by_b}{\sum_{c=1}^{n}x_c^2} $$
+Since $x_a$ isn't indexed to b, we can pull it into the numerator for our term
+
+$$ = \sum_{b=1}^{n}\frac{x_ax_by_b}{\sum_{c=1}^{n}x_c^2} $$
+Likewise, since our denominator $x_c^2$ isn't indexed to b, we can pull our summation sign out to the left
+
+$$ = \sum_{b=1}^{n}\frac{x_ax_b}{\sum_{c=1}^{n}x_c^2} y_b $$
+Since it is all within our summation term indexing b, we can pull our $y_b$ to the right, which is what we want for our final solution
+
+$$ = \sum_{b=1}^{n}a_by_b $$
+Lastly, we redefine all elements other than $y_b$ and our index of summation out as a new item, $a_b$
+
+Where we define $a_b$ as 
+
+$$a_b = \frac{x_ax_b}{\sum_{c=1}^{n}x_c^2}$$
+
+## 5
+
+### A
+```{r 5a}
+data(Boston)
+Boston_2<-Boston^2
+Boston_3<-Boston^3
+Boston$chas <- factor(Boston$chas)
+#code for each single regression, plus plots of each
+b_m1<-lm(crim~zn, data = Boston)
+#summary(b_m1)
+b_m1p<-ggplot(Boston, aes(x = zn, y = crim)) + 
+  geom_point() + 
+  geom_abline(intercept = coef(b_m1)[1], slope = coef(b_m1)[2], 
+              col = "deepskyblue3", 
+              size = 1) + 
+  geom_smooth(se = F)
+b_m1p
+
+b_m2<-lm(crim~indus, data = Boston)
+#summary(b_m2)
+b_m2p<-ggplot(Boston, aes(x = indus, y = crim)) + 
+  geom_point() + 
+  geom_abline(intercept = coef(b_m2)[1], slope = coef(b_m2)[2], 
+              col = "deepskyblue3", 
+              size = 1) + 
+  geom_smooth(se = F)
+b_m2p
+
+b_m3<-lm(crim~chas, data = Boston)
+#summary(b_m3)
+b_m3p<-ggplot(Boston, aes(x = chas, y = crim)) + 
+  geom_point() + 
+  geom_abline(intercept = coef(b_m3)[1], slope = coef(b_m3)[2], 
+              col = "deepskyblue3", 
+              size = 1) + 
+  geom_smooth(se = F)
+b_m3p
+
+b_m4<-lm(crim~nox, data = Boston)
+#summary(b_m4)
+b_m4p<-ggplot(Boston, aes(x = nox, y = crim)) + 
+  geom_point() + 
+  geom_abline(intercept = coef(b_m4)[1], slope = coef(b_m4)[2], 
+              col = "deepskyblue3", 
+              size = 1) + 
+  geom_smooth(se = F)
+b_m4p
+
+b_m5<-lm(crim~rm, data = Boston)
+#summary(b_m5)
+b_m5p<-ggplot(Boston, aes(x = rm, y = crim)) + 
+  geom_point() + 
+  geom_abline(intercept = coef(b_m5)[1], slope = coef(b_m5)[2], 
+              col = "deepskyblue3", 
+              size = 1) + 
+  geom_smooth(se = F)
+b_m5p
+
+b_m6<-lm(crim~age, data = Boston)
+#summary(b_m6)
+b_m6p<-ggplot(Boston, aes(x = age, y = crim)) + 
+  geom_point() + 
+  geom_abline(intercept = coef(b_m6)[1], slope = coef(b_m6)[2], 
+              col = "deepskyblue3", 
+              size = 1) + 
+  geom_smooth(se = F)
+b_m6p
+
+b_m7<-lm(crim~dis, data = Boston)
+#summary(b_m7)
+b_m7p<-ggplot(Boston, aes(x = dis, y = crim)) + 
+  geom_point() + 
+  geom_abline(intercept = coef(b_m7)[1], slope = coef(b_m7)[2], 
+              col = "deepskyblue3", 
+              size = 1) + 
+  geom_smooth(se = F)
+b_m7p
+
+b_m8<-lm(crim~rad, data = Boston)
+#summary(b_m8)
+b_m8p<-ggplot(Boston, aes(x = rad, y = crim)) + 
+  geom_point() + 
+  geom_abline(intercept = coef(b_m8)[1], slope = coef(b_m8)[2], 
+              col = "deepskyblue3", 
+              size = 1) + 
+  geom_smooth(se = F)
+b_m8p
+
+b_m9<-lm(crim~tax, data = Boston)
+#summary(b_m9)
+b_m9p<-ggplot(Boston, aes(x = tax, y = crim)) + 
+  geom_point() + 
+  geom_abline(intercept = coef(b_m9)[1], slope = coef(b_m9)[2], 
+              col = "deepskyblue3", 
+              size = 1) + 
+  geom_smooth(se = F)
+b_m9p
+
+b_m10<-lm(crim~ptratio, data = Boston)
+#summary(b_m10)
+b_m10p<-ggplot(Boston, aes(x = ptratio, y = crim)) + 
+  geom_point() + 
+  geom_abline(intercept = coef(b_m10)[1], slope = coef(b_m10)[2], 
+              col = "deepskyblue3", 
+              size = 1) + 
+  geom_smooth(se = F)
+b_m10p
+
+b_m11<-lm(crim~black, data = Boston)
+#summary(b_m11)
+b_m11p<-ggplot(Boston, aes(x = black, y = crim)) + 
+  geom_point() + 
+  geom_abline(intercept = coef(b_m11)[1], slope = coef(b_m11)[2], 
+              col = "deepskyblue3", 
+              size = 1) + 
+  geom_smooth(se = F)
+b_m11p
+
+b_m12<-lm(crim~lstat, data = Boston)
+#summary(b_m12)
+b_m12p<-ggplot(Boston, aes(x = lstat, y = crim)) + 
+  geom_point() + 
+  geom_abline(intercept = coef(b_m12)[1], slope = coef(b_m12)[2], 
+              col = "deepskyblue3", 
+              size = 1) + 
+  geom_smooth(se = F)
+b_m12p
+
+b_m13<-lm(crim~medv, data = Boston)
+#summary(b_m13)
+b_m13p<-ggplot(Boston, aes(x = medv, y = crim)) + 
+  geom_point() + 
+  geom_abline(intercept = coef(b_m13)[1], slope = coef(b_m13)[2], 
+              col = "deepskyblue3", 
+              size = 1) + 
+  geom_smooth(se = F)
+b_m13p
+
+```
+The results are fairly clear, insofar as we can see that some of our predictors look like they are a better potential variable to use than others. The ones that stand out simply from looking at the graphs are the rad and tax predictors. The only predictor without a statistically significant association in our single simple linear regression model is the 'chas' variable, with a p-value greater than our alpha of 0.05.
+
+### B
+```{r 5b}
+b_m14<-lm(crim~., data = Boston)
+summary(b_m14)
+```
+Looking at our statistical output for our multiple regression, we can reject our null hypothesis for the predictors indus, chas, nox, rm, age, tax, ptratio, and lstat.
+
+### c
+```{r 5c}
+single_reg<-c(coef(b_m1)[[2]], coef(b_m2)[[2]],coef(b_m3)[[2]],coef(b_m4)[[2]],coef(b_m5)[[2]],coef(b_m6)[[2]],coef(b_m7)[[2]],
+              coef(b_m8)[[2]],coef(b_m9)[[2]],coef(b_m10)[[2]],coef(b_m11)[[2]],coef(b_m12)[[2]],coef(b_m13)[[2]])
+single_reg<-as.data.frame(single_reg)
+
+multiple_reg<-b_m14[[1]]
+multiple_reg<-as.data.frame(multiple_reg)
+multiple_reg<-multiple_reg[-1,]
+multiple_reg<-as.data.frame(multiple_reg)
+
+names<-names((b_m14$coefficients))
+names<-as.data.frame(names)
+names<-names[-1,]
+names<-as.data.frame(names)
+
+regression_plot<-cbind(single_reg, multiple_reg,names)
+
+
+ggplot(regression_plot, aes(x = single_reg, y = multiple_reg, col = names)) + 
+  geom_jitter() + 
+  labs(title = "Simple vs Multiple Regression Coefficients", 
+       subtitle = "For linear models predicting 'crim'", 
+       x = "Simple Coefficient", 
+       y = "Multiple Coefficient")  
+```
+
+### D
+```{r 5d}
+testlist<-list(NA)
+for (i in 2:ncol(Boston)){
+  testlist[[i-1]]<-summary(lm(Boston$crim ~ Boston[,i] + Boston_2[,i] + Boston_3[,i] ))
+}
+#print(testlist)
+#commenting out this code in order to reduce size of output
+```
+There is evidence of a nonlinear association between several of our predictors and their responses. The models from 1 to 13 follow the ordering of the columns in our dataset, Boston. 
+
+Given this, we can clearly see that there is a cubic relationship for the medv, nox, dis, indus, age, and ptratio predictors.
+
+## 6
+Given $f_k(x) = \frac{1}{\sqrt{2\pi}\sigma_k} exp(-\frac{1}{2\sigma_k^2} (x-\mu_k)^2)$
+
+We begin with our function $p_k(x)$
+
+$$ p_k(x)  = \frac{\pi_k \cdot f_k(x)} {\sum_{l=1}^{K} \pi_l \cdot f_l(x)}$$  
+Taking the natural log, we end up with
+
+$$ ln(p_k(x))  = ln(\pi_k) - ln(\sqrt{2\pi_l}\sigma)-\frac{(x-\mu_k)^2}{2\sigma^2}-ln({\sum_{l=1}^{K} \pi_l \cdot f_l(x)})$$  
+Simplifying and reducing the elements, we come to
+
+$$ ln(p_k(x))  = ln(\pi_k) - .5*ln(2\pi_l * \sigma^2)-\frac{x^2-2\mu_kx+\mu^2}{2\sigma^2}-ln({\sum_{l=1}^{K} \pi_l \cdot f_l(x)})$$  
+Simplifying further, we approach our 'final' form which is 
+
+$$ ln(p_k(x))  = x* \frac{\mu_k}{\sigma^2_k}-\frac{\mu_k^2}{2\sigma^2_k}-\frac{x^2}{2\sigma_k^2} - .5*ln(2\pi_l * \sigma^2) -ln({\sum_{l=1}^{K} \pi_l \cdot f_l(x)})$$  
+Given that we can 'cancel' out the righthand most term in our comparisions between classes, as it is the summated probability across all classes (which does not change), the remaining terms comprise the differences between classes $\mu_k$ and $\sigma_k$. 
+
+We can thus see that our Bayes classifier is nonlinear as we have a $x^2$ term remaining in our formula.
+
+The reason why this is nonlinear in the QDA case versus the LDA case is because in the LDA case, any term with $\sigma$ is allowed to be 'cancelled out' when comparing each class to each other, as it is assumed that they all share the same $\sigma$ term when doing LDA. Looking at our formula for the QDA, when you are not allowed to 'cancel' out the terms with $\sigma$ in them because the classes are assumed to have different variance/covariance matrices, we are left with a remaining $x^2$ term, thus rendering our bayes classifier as nonlinear.
+
+## 7
+
+### A
+```{r 7a}
+tumor<-read.csv("tumor.csv")
+tumor$Diagnosis<-as.factor(tumor$Diagnosis)
+pairs(tumor)
+```
+Radius, perimeter, and concave points seem most related to outcome.
+
+Some features are highly related, radius and perimter, radius and area, area highly so.
+
+Some features which are related strongly, but less so than the previously mentioned ones are perimeter, concavity/concave points, and compactness/concavity.
+
+### B
+```{r 7b}
+set.seed(1)
+test=1:512
+train_tumor<-tumor[test,]
+test_tumor<-tumor[-test,]
+nrow(test_tumor)
+```
+### C
+```{r 7c}
+tumor_logistic<-glm(Diagnosis~Radius+Symmetry+Concave.Points, data = train_tumor, family = binomial)
+
+tumor_logistic_probs<-predict(tumor_logistic, test_tumor,type = "response")
+tumor_logistic_pred<-rep("Benign", 57)
+tumor_logistic_pred[tumor_logistic_probs >.5]= "Malignant"
+table(tumor_logistic_pred, test_tumor$Diagnosis)
+
+mean(tumor_logistic_pred==test_tumor$Diagnosis)
+1-mean(tumor_logistic_pred==test_tumor$Diagnosis)
+```
+Our fraction of correct predictions is roughly 96/100
+Our misclassification rate is roughly 3%
+
+
+### D
+```{r 7d}
+tumor_logistic_pred2<-rep("Benign", 57)
+tumor_logistic_pred2[tumor_logistic_probs >.25]= "Malignant"
+table(tumor_logistic_pred2, test_tumor$Diagnosis)
+
+mean(tumor_logistic_pred2==test_tumor$Diagnosis)
+1-mean(tumor_logistic_pred2==test_tumor$Diagnosis)
+```
+Our fraction of correct predictions is roughly 94/100
+Our misclassification rate is roughly 5%
+
+Compared to our model with a higher classification threshold it looks like we have an increased rate of false positives, but have decreased our rate of false negatives. If this is a situation where false negatives are an extreme deterrant compared to false positives, the improvement in our false negative rate may be worth the increase in our misclassification rate overall.
+
+
+
+### E
+```{r 7e}
+tumor_lda<-lda(Diagnosis~Radius+Symmetry+Concave.Points, data = train_tumor)
+tumor_lda_pred<-predict(tumor_lda, test_tumor)
+
+tumor_lda_class<-tumor_lda_pred$class
+
+table(tumor_lda_class, test_tumor$Diagnosis)
+1-mean(tumor_lda_class==test_tumor$Diagnosis)
+```
+The test error is roughly 5%
+
+### F
+```{r 7f}
+tumor_qda<-qda(Diagnosis~Radius+Symmetry+Concave.Points, data = train_tumor)
+
+tumor_qda_class<-predict(tumor_qda, test_tumor)$class
+
+table(tumor_qda_class, test_tumor$Diagnosis)
+1-mean(tumor_qda_class==test_tumor$Diagnosis)
+```
+The test error is roughly 3%
+### G
+```{r 7g}
+train_tumor_x<-cbind(train_tumor$Radius,train_tumor$Symmetry,train_tumor$Concave.Points)
+test_tumor_x<-cbind(test_tumor$Radius,test_tumor$Symmetry,test_tumor$Concave.Points)
+train_tumor_direction<-train_tumor$Diagnosis
+
+tumor_knn_1<-knn(train_tumor_x,test_tumor_x,train_tumor_direction ,k=1)
+table(tumor_knn_1 , test_tumor$Diagnosis)
+1-mean(tumor_knn_1==test_tumor$Diagnosis)
+
+tumor_knn_2<-knn(train_tumor_x,test_tumor_x,train_tumor_direction ,k=2)
+table(tumor_knn_2 , test_tumor$Diagnosis)
+1-mean(tumor_knn_2==test_tumor$Diagnosis)
+
+tumor_knn_3<-knn(train_tumor_x,test_tumor_x,train_tumor_direction ,k=3)
+table(tumor_knn_3 , test_tumor$Diagnosis)
+1-mean(tumor_knn_3==test_tumor$Diagnosis)
+
+tumor_knn_4<-knn(train_tumor_x,test_tumor_x,train_tumor_direction ,k=4)
+table(tumor_knn_4 , test_tumor$Diagnosis)
+1-mean(tumor_knn_4==test_tumor$Diagnosis)
+```
+
+Our error rate for K = 1 is roughly 15%
+Our error rate for K = 2 is roughly 15%
+Our error rate for K = 3 is roughly 5%
+Our error rate for K = 4 is roughly 2%
+
+The values chosen for our KNN approximation were 1, 2, 3, and 4. We see that our error rate is smallest for our model with 4 nearest neighbors, which is the value of k that works best for the data
+
+## 8
+
+### Graphing
+```{r 8gr}
+data(Boston)
+Boston$direction<-rep("Up", 506)
+Boston$direction[Boston$crim <median(Boston$crim)]="Down"
+Boston$direction<-as.factor(Boston$direction)
+pairs(Boston[])
+test2<-(1:455)
+Boston_train<-Boston[test2,]
+Boston_test<-Boston[-test2,]
+```
+We begin by looking at a scatterplot matrix of all of our predictors.Looking at the graph, we can see that rad, ptratio, nox, and dis look most strongly related to our outcome of whether or not crime is above or below the median.
+
+For the purpose of this problem, I will look at two sets of the predictors. The first set will be every single predictor in our data set, our second set will be the predictors that our graphical analysis look to be most related to crime, namely rad, ptratio, box, and dis.
+
+Additionally, we will be splitting our dataset into a 90% size training set, and a 10% testing set.
+### Logistic Regression full set
+```{r 8lr}
+Boston_logistic_1<-glm(direction~.-crim, data = Boston_train, family = binomial)
+summary(Boston_logistic_1)
+Boston_logistic_probs_1<-predict(Boston_logistic_1, Boston_test,type = "response")
+Boston_logistic_pred_1<-rep("Down", 51)
+Boston_logistic_pred_1[Boston_logistic_probs_1 >.5]= "Up"
+table(Boston_logistic_pred_1, Boston_test$direction)
+1-mean(Boston_logistic_pred_1==Boston_test$direction)
+```
+For our logistic regression on the full set of predictors, our misclassification rate looks to be roughly 20%
+
+### Logistic Regression reduced set
+```{r 8lrr}
+Boston_logistic_2<-glm(direction~ rad + nox + ptratio + dis, data = Boston_train, family = binomial)
+summary(Boston_logistic_2)
+Boston_logistic_probs_2<-predict(Boston_logistic_2, Boston_test,type = "response")
+Boston_logistic_pred_2<-rep("Down", 51)
+Boston_logistic_pred_2[Boston_logistic_probs_2 >.5]= "Up"
+table(Boston_logistic_pred_2, Boston_test$direction)
+1-mean(Boston_logistic_pred_2==Boston_test$direction)
+```
+For our logistic regression on the reduced set of predictors, our misclassification rate looks to be roughly 20%
+
+### LDA full set
+```{r 8lda}
+Boston_lda_1<-lda(direction~.-crim, data = Boston_train, family = binomial)
+Boston_lda_1
+Boston_lda_pred_1<-predict(Boston_lda_1, Boston_test)
+Boston_lda_class_1<-Boston_lda_pred_1$class
+
+table(Boston_lda_class_1, Boston_test$direction)
+1-mean(Boston_lda_class_1==Boston_test$direction)
+```
+For our LDA on our full set of predictors, our misclassification rate looks to be 27%
+
+### LDA reduced set
+```{r 8ldar}
+Boston_lda_2<-lda(direction~ rad + nox + ptratio + dis, data = Boston_train, family = binomial)
+Boston_lda_2
+Boston_lda_pred_2<-predict(Boston_lda_2, Boston_test)
+Boston_lda_class_2<-Boston_lda_pred_2$class
+
+table(Boston_lda_class_2, Boston_test$direction)
+1-mean(Boston_lda_class_2==Boston_test$direction)
+```
+For our LDA on our full set of predictors, our misclassification rate looks to be 29%
+
+### KNN full set
+```{r 8knn}
+Boston_train_x_1<-Boston_train[,c(-1,-15)]
+Boston_test_x_1<-Boston_test[,c(-1,-15)]
+Boston_train_direction<-Boston_train$direction
+
+Boston_knn_1_A<-knn(Boston_train_x_1,Boston_test_x_1,Boston_train_direction,k=1)
+table(Boston_knn_1_A , Boston_test$direction)
+1-mean(Boston_knn_1_A==Boston_test$direction)
+
+Boston_knn_1_B<-knn(Boston_train_x_1,Boston_test_x_1,Boston_train_direction,k=2)
+table(Boston_knn_1_B , Boston_test$direction)
+1-mean(Boston_knn_1_B==Boston_test$direction)
+
+Boston_knn_1_C<-knn(Boston_train_x_1,Boston_test_x_1,Boston_train_direction,k=4)
+table(Boston_knn_1_C , Boston_test$direction)
+1-mean(Boston_knn_1_C==Boston_test$direction)
+```
+
+
+### KNN reduced set
+```{r 8knnr}
+Boston_train_x_2<-cbind(Boston_train$rad, Boston_train$nox, Boston_train$ptratio, Boston_train$dis)
+Boston_test_x_2<-cbind(Boston_test$rad, Boston_test$nox, Boston_test$ptratio, Boston_test$dis)
+
+Boston_knn_2_A<-knn(Boston_train_x_2,Boston_test_x_2,Boston_train_direction,k=1)
+table(Boston_knn_2_A , Boston_test$direction)
+1-mean(Boston_knn_2_A==Boston_test$direction)
+
+Boston_knn_2_B<-knn(Boston_train_x_2,Boston_test_x_2,Boston_train_direction,k=2)
+table(Boston_knn_2_B , Boston_test$direction)
+1-mean(Boston_knn_2_B==Boston_test$direction)
+
+Boston_knn_2_C<-knn(Boston_train_x_2,Boston_test_x_2,Boston_train_direction,k=10)
+table(Boston_knn_2_C , Boston_test$direction)
+1-mean(Boston_knn_2_C==Boston_test$direction)
+```
+Shockingly, we see no difference in either of our KNN classifications, with the full or reduced set of parameters. Our misclassification rate looks to be 15%.
+
+Looking at all our methods, I feel like using a KNN classification method would be the most effective, and for parsimony's sake, I would choose the reduced set of predictors, with K = 1 for ease of computation.

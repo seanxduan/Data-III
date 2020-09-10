@@ -22,7 +22,7 @@ count(seeds$perimeter > 15)
 #d
 which.max(seeds$asymmetry.coefficient)
 
-seeds[210,]
+seeds[204,]
 
 #e
 pairs(seeds)
@@ -272,8 +272,8 @@ summary(testreg)
 #have our my lms set using I b/c it is not defined b/c of singularities
 
 testlist<-list(NA)
-for (i in 2:ncol(Bostons)){
-  testlist[[i-1]]<-summary(lm(Bostons$crim ~ Bostons[,i] + Boston_2[,i] + Boston_3[,i] ))
+for (i in 2:ncol(Boston)){
+  testlist[[i-1]]<-summary(lm(Boston$crim ~ Boston[,i] + Boston_2[,i] + Boston_3[,i] ))
 }
 print(testlist)
 
@@ -281,10 +281,8 @@ print(testlist)
 #a
 library(plyr)
 tumor<-read.csv("tumor.csv")
-tumor$Outcome<-revalue(tumor$Diagnosis, c("Malignant" = 1, "Benign" = 0))
-tumor$Outcome<-as.numeric(tumor$Outcome)
-pairs(tumor[,-1])
 tumor$Diagnosis<-as.factor(tumor$Diagnosis)
+pairs(tumor)
 
 #radius, perimeter, and concave points seem most related to outcome
 #features highly related, radius and perimter, radius and area, area highly so
@@ -297,8 +295,6 @@ train_tumor<-tumor[test,]
 test_tumor<-tumor[-test,]
 nrow(test_tumor)
 #c
-tumor_logistic<-glm(Outcome~Radius+Symmetry+Concave.Points, data = train_tumor, family = binomial)
-
 tumor_logistic<-glm(Diagnosis~Radius+Symmetry+Concave.Points, data = train_tumor, family = binomial)
 summary(tumor_logistic)
 tumor_logistic_probs<-predict(tumor_logistic, test_tumor,type = "response")
@@ -365,9 +361,90 @@ tumor_knn_4<-knn(train_tumor_x,test_tumor_x,train_tumor_direction ,k=4)
 table(tumor_knn_4 , test_tumor$Diagnosis)
 1-mean(tumor_knn_4==test_tumor$Diagnosis)
 
-
 #8
+data(Boston)
 median(Boston$crim)
-#add this as a vector? where either true or calse
-Boston$direction<-rep("down", 506)
-Boston$direction[Boston$crim >median(Boston$crim)]=" Up"
+#add this as a vector? where either true or false
+Boston$direction<-rep("Up", 506)
+Boston$direction[Boston$crim <median(Boston$crim)]="Down"
+Boston$direction<-as.factor(Boston$direction)
+sum(Boston$direction == "Down")
+pairs(Boston[,-15])
+levels(Boston$direction)
+?Boston
+#looking at the graphs, rad, ptratio, nox, and dis look most strongly related
+#we can look at the full set
+#and then the set w/ the fewest models that makes sense? (4 above variables)
+#gotta split data into test and training, 90% training 10% test seems good
+test2<-(1:455)
+Boston_train<-Boston[test2,]
+Boston_test<-Boston[-test2,]
+#a
+#note that random guessing gives you a 50% shot either way, so can we do better?
+Boston_logistic_1<-glm(direction~.-crim, data = Boston_train, family = binomial)
+summary(Boston_logistic_1)
+Boston_logistic_probs_1<-predict(Boston_logistic_1, Boston_test,type = "response")
+Boston_logistic_pred_1<-rep("Down", 51)
+Boston_logistic_pred_1[Boston_logistic_probs_1 >.5]= "Up"
+table(Boston_logistic_pred_1, Boston_test$direction)
+1-mean(Boston_logistic_pred_1==Boston_test$direction)
+
+Boston_logistic_2<-glm(direction~ rad + nox + ptratio + dis, data = Boston_train, family = binomial)
+summary(Boston_logistic_2)
+Boston_logistic_probs_2<-predict(Boston_logistic_2, Boston_test,type = "response")
+Boston_logistic_pred_2<-rep("Down", 51)
+Boston_logistic_pred_2[Boston_logistic_probs_2 >.5]= "Up"
+table(Boston_logistic_pred_2, Boston_test$direction)
+1-mean(Boston_logistic_pred_2==Boston_test$direction)
+
+#b
+#e
+Boston_lda_1<-lda(direction~.-crim, data = Boston_train, family = binomial)
+Boston_lda_1
+Boston_lda_pred_1<-predict(Boston_lda_1, Boston_test)
+Boston_lda_class_1<-Boston_lda_pred_1$class
+
+table(Boston_lda_class_1, Boston_test$direction)
+1-mean(Boston_lda_class_1==Boston_test$direction)
+
+
+Boston_lda_2<-lda(direction~ rad + nox + ptratio + dis, data = Boston_train, family = binomial)
+Boston_lda_2
+Boston_lda_pred_2<-predict(Boston_lda_2, Boston_test)
+Boston_lda_class_2<-Boston_lda_pred_2$class
+
+table(Boston_lda_class_2, Boston_test$direction)
+1-mean(Boston_lda_class_2==Boston_test$direction)
+
+#c
+library(class)
+Boston_train_x_1<-Boston_train[,c(-1,-15)]
+Boston_test_x_1<-Boston_test[,c(-1,-15)]
+Boston_train_direction<-Boston_train$direction
+
+Boston_knn_1_A<-knn(Boston_train_x_1,Boston_test_x_1,Boston_train_direction,k=1)
+table(Boston_knn_1_A , Boston_test$direction)
+1-mean(Boston_knn_1_A==Boston_test$direction)
+
+Boston_knn_1_B<-knn(Boston_train_x_1,Boston_test_x_1,Boston_train_direction,k=2)
+table(Boston_knn_1_B , Boston_test$direction)
+1-mean(Boston_knn_1_B==Boston_test$direction)
+
+Boston_knn_1_C<-knn(Boston_train_x_1,Boston_test_x_1,Boston_train_direction,k=4)
+table(Boston_knn_1_C , Boston_test$direction)
+1-mean(Boston_knn_1_C==Boston_test$direction)
+
+Boston_train_x_2<-cbind(Boston_train$rad, Boston_train$nox, Boston_train$ptratio, Boston_train$dis)
+Boston_test_x_2<-cbind(Boston_test$rad, Boston_test$nox, Boston_test$ptratio, Boston_test$dis)
+
+Boston_knn_2_A<-knn(Boston_train_x_2,Boston_test_x_2,Boston_train_direction,k=1)
+table(Boston_knn_2_A , Boston_test$direction)
+1-mean(Boston_knn_2_A==Boston_test$direction)
+
+Boston_knn_2_B<-knn(Boston_train_x_2,Boston_test_x_2,Boston_train_direction,k=2)
+table(Boston_knn_2_B , Boston_test$direction)
+1-mean(Boston_knn_2_B==Boston_test$direction)
+
+Boston_knn_2_C<-knn(Boston_train_x_2,Boston_test_x_2,Boston_train_direction,k=10)
+table(Boston_knn_2_C , Boston_test$direction)
+1-mean(Boston_knn_2_C==Boston_test$direction)
