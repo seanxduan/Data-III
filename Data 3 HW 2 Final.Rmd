@@ -1,0 +1,41 @@
+---
+title: "Data 3 HW 1"
+author: "Sean Duan"
+date: "8/31/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(plyr)
+library(ggplot2)
+library(MASS)
+library(ISLR)
+library(class)
+```
+
+# 1.
+
+## A
+For this formula n is 100, and p is 2.
+
+$$x \sim N(0,1) $$
+$$y = x-(2  x^2) + \epsilon  $$
+
+#why is it +e instead of just 2x, given that x follows the same distrib as e?
+
+## 2.
+
+A parametric statistical learning approach allows you to simplify the process of determining what your model, f, is. By allowing you to assume a given form for the function, the only remaining thing to estimate are the values for the parameters of that given form. Concerns with the parametric approach arise when you consider it may be unlikely that the form you assume for f does not indeed fit the true, unknown, form for f that exists. A non-parametric statistical learning approach makes no assumptions about the form of f, which allows f to be in a broader variety of forms, hopefully leading it to match the true unknown form of the function f. The advantages and disadvantages of choosing a parametric vs a non parametric approach are as follows: With a parametric approach, you need a great deal less observations to estimate f, as you are reducing the problem of estimation of f to a simple concern of finding the values of a small number of parameters, however, your disadvantage is that you potentially do not have an acceptable quality of estimation of the true functional form of f, as you could have with a non-parametric approach.
+
+## 3
+### A
+```{r 3a}
+#a.
+seeds<-read.csv("seeds.csv")
+seeds$Type<-as.factor(seeds$Type)
+
+seeds$Type<-revalue(seeds$Type, c("1" = "Kama", "2" = "Rosa", "3" = "Canadian"))
+
+levels(seeds$Type)
+```
