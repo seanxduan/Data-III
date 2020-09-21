@@ -79,3 +79,77 @@ boot_fn3<-function(data, index){
 }
 boot_result3<-boot(data = Boston$medv, statistic = boot_fn3, R=1000)
 boot_result3
+
+
+## 3
+youtube<-read.csv("youtube.csv")
+
+
+## 4
+library(MASS)
+data(Pima.tr)
+data(Pima.te)
+library(ISLR)
+?cv.glm
+data(nodal)
+
+
+#test material on combos
+install.packages("MuMIn")
+library(MuMIn)
+data(iris)
+
+globalmodel <- lm(Sepal.Length ~ Petal.Length + Petal.Width + Species, data = iris, na.action = "na.fail")
+
+combinations <- dredge(globalmodel)
+
+print(combinations)
+cv.glm(iris ,combinations ,K=10) $delta [1]
+#doesn't work b/c can't run an obs on the 'list' intsead of a batch of formulas
+
+#extremely brutalist representation, create our namesvec w/ all names
+#plan on throwing out a model in each chunk (the double v model)
+install.packages("Hmisc")
+install.packages("Design")
+library(Hmisc)
+library(Design)
+#doing this for our first combo of var's, lets see if it works?
+varnames <- Cs(glu, bp, skin, bmi, ped, age)
+modelfits <- vector(length(varnames), mode = "list")
+names(modelfits) <- varnames
+for(i in varnames) {
+  modelformula <- paste("type ~ npreg +", i)
+  modelfits[[i]] <- glm(as.formula(modelformula), data = Pima.tr)
+}
+
+#doesn't work???
+varnames <- Cs(npreg,glu, bp, skin, bmi, ped, age)
+modelfits <- vector(length(varnames), mode = "list")
+names(modelfits) <- varnames
+for(i in varnames) {
+  modelformula <- paste("type ~ npreg +", i)
+  modelfits[[i]] <- glm(as.formula(modelformula), data = Pima.tr)
+}
+str(modelfits)
+
+
+#try something else but it might be garbage
+
+vars <- c("npreg","glu", "bp", "skin", "bmi", "ped", "age")
+comb.vars <- expand.grid(vars, vars, stringsAsFactors = FALSE)
+comb.vars <- comb.vars[!(comb.vars[,1] == comb.vars[,2]),]
+i.vars <- apply(comb.vars, 1, paste, collapse = "+")
+View(i.vars)
+
+for(i in 1:length(i.vars)) {
+  modelformula <- paste("type ~", i.vars[i])
+  modelfits[[i]] <- glm(as.formula(modelformula), data = Pima.tr)
+}
+
+for(i in 1:length(i.vars)) {
+  modelformula <-c("type ~", i.vars[i])
+}
+
+View(modelformula)
+i.vars[1]
+
