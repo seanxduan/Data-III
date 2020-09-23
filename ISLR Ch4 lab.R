@@ -32,6 +32,7 @@ table(glm.pred,Direction.2005)
 
 #now we try to do LDA
 library(MASS)
+attach(Smarket)
 lda.fit<-lda(Direction ~ Lag1+Lag2,data = Smarket, subset = train)
 lda.fit
 
