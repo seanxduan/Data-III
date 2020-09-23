@@ -82,7 +82,47 @@ boot_result3
 
 
 ## 3
-youtube<-read.csv("youtube.csv")
+youtube<-read.csv("Data-III/youtube.csv")
+
+library(boot)
+
+library(e1071)
+
+set.seed(1)
+
+mods=list(1,2,3,4,c(1,2),c(1,3),c(1,4),c(2,3),c(2,4),c(3,4),
+          
+          c(1,2,3),c(1,2,4),c(1,3,4),c(2,3,4))
+
+cv.error=rep(0,length(mods))
+
+for(i in 1:length(mods)){
+  
+  youtube_mod=youtube[,c(1,1+mods[[i]])] 
+  
+  glm.fit=glm(utime~.,data=youtube_mod)
+  
+  cv.error[i]=cv.glm(youtube_mod,glm.fit,K=5)$delta[1]
+  
+}
+
+cv.error
+
+glm.fitbest=glm(utime~size+umem+OutputPixels,data=youtube)
+
+
+
+
+
+shapiro.test(glm.fitbest$residuals)
+
+par(mfrow=c(1,3))
+
+boxplot(glm.fitbest$residuals)
+
+hist(glm.fitbest$residuals,main="residuals")
+
+qqplot(glm.fitbest$residuals,rnorm(1000),xlab="residuals",ylab="normal quantiles")
 
 
 ## 4
@@ -90,66 +130,69 @@ library(MASS)
 data(Pima.tr)
 data(Pima.te)
 library(ISLR)
-?cv.glm
 data(nodal)
 
-
-#test material on combos
-install.packages("MuMIn")
-library(MuMIn)
-data(iris)
-
-globalmodel <- lm(Sepal.Length ~ Petal.Length + Petal.Width + Species, data = iris, na.action = "na.fail")
-
-combinations <- dredge(globalmodel)
-
-print(combinations)
-cv.glm(iris ,combinations ,K=10) $delta [1]
 #doesn't work b/c can't run an obs on the 'list' intsead of a batch of formulas
 
 #extremely brutalist representation, create our namesvec w/ all names
 #plan on throwing out a model in each chunk (the double v model)
-install.packages("Hmisc")
-install.packages("Design")
-library(Hmisc)
-library(Design)
-#doing this for our first combo of var's, lets see if it works?
-varnames <- Cs(glu, bp, skin, bmi, ped, age)
-modelfits <- vector(length(varnames), mode = "list")
-names(modelfits) <- varnames
-for(i in varnames) {
-  modelformula <- paste("type ~ npreg +", i)
-  modelfits[[i]] <- glm(as.formula(modelformula), data = Pima.tr)
-}
-
-#doesn't work???
-varnames <- Cs(npreg,glu, bp, skin, bmi, ped, age)
-modelfits <- vector(length(varnames), mode = "list")
-names(modelfits) <- varnames
-for(i in varnames) {
-  modelformula <- paste("type ~ npreg +", i)
-  modelfits[[i]] <- glm(as.formula(modelformula), data = Pima.tr)
-}
-str(modelfits)
 
 
 #try something else but it might be garbage
 
 vars <- c("npreg","glu", "bp", "skin", "bmi", "ped", "age")
 comb.vars <- expand.grid(vars, vars, stringsAsFactors = FALSE)
-comb.vars <- comb.vars[!(comb.vars[,1] == comb.vars[,2]),]
+comb.vars <- comb.vars[comb.vars[,1] != comb.vars[,2],]
 i.vars <- apply(comb.vars, 1, paste, collapse = "+")
 View(i.vars)
 
+
+cv_error<-list(NA)
+cost <- function(r, pi = 0) mean(abs(r-pi) > 0.5)
+modelfits<-list(NA)
 for(i in 1:length(i.vars)) {
   modelformula <- paste("type ~", i.vars[i])
-  modelfits[[i]] <- glm(as.formula(modelformula), data = Pima.tr)
+  modelfits[[i]] <- glm(as.formula(modelformula), family = "binomial", data = Pima.tr)
+  cv_error[[i]]=cv.glm(Pima.tr,modelfits[[i]], cost = cost ,K=5)$delta[1]
 }
+cv_error
+which.min(cv_error)
 
+best_model<-modelfits[[38]]
+summary(best_model)
+glm.probs=predict(best_model, Pima.te ,type="response")
+
+
+glm.pred=rep("No" ,332)
+glm.pred[glm.probs >.5]="Yes"
+table(glm.pred,Pima.te$type)
+
+#ex<-glm(type ~ npreg+glu,data=Pima.tr,family="binomial")
+#library(boot)
+#ex.cv<-cv.glm(Pima.tr ,ex, cost = cost,K=5)
+#ex.cv$delta[1]
+#?cv.glm
+#cost <- function(r, pi = 0) mean(abs(r-pi) > 0.5)
+
+#we can use forward stepwise for c, or we can use domain knowledge to pick a 'best logistic reg'
+library(MASS)
+full_model<-glm(type~., data = Pima.tr, family = "binomial")
+step_model<-stepAIC(full_model, direction = "both")
+step_model_1<-stepAIC(glm(type~1, data = Pima.tr, family = "binomial"),scope=formula(full_model),direction = "forward")
+
+#make sure to test it's performance on the test set!!!
+
+#
+cv_error<-list(NA)
+#program a deviance based loss fxn
+cost <- function(r,p) -2*(sum(log(p)))
+
+
+modelfits<-list(NA)
 for(i in 1:length(i.vars)) {
-  modelformula <-c("type ~", i.vars[i])
+  modelformula <- paste("type ~", i.vars[i])
+  modelfits[[i]] <- glm(as.formula(modelformula), family = "binomial", data = Pima.tr)
+  cv_error[[i]]=cv.glm(Pima.tr,modelfits[[i]], cost = cost ,K=5)$delta[1]
 }
-
-View(modelformula)
-i.vars[1]
-
+cv_error
+which.min(cv_error)

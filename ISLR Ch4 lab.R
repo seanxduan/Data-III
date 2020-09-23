@@ -3,7 +3,7 @@ install.packages("ISLR")
 library(ISLR)
 
 Smarket<-Smarket
-glm.fits=glm(Direction∼Lag1+Lag2+Lag3+Lag4+Lag5+Volume ,
+glm.fits=glm(Direction~Lag1+Lag2+Lag3+Lag4+Lag5+Volume ,
                data=Smarket ,family=binomial )
 summary (glm.fits)
 glm.probs=predict (glm.fits,type="response")
