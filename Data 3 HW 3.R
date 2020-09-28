@@ -141,16 +141,43 @@ K=5
 folds = sample(1:K,nrow(data4),replace=T)
 optim_list<-rep(NA)
 bstlam<-rep(NA)
-
+err_cv<-rep(NA)
 for(k in 1:K){
-  CV.train = data4[folds != k,]
-  CV.test = data4[folds == k,]
+  CV.train = x[folds != k,]
+  CV.test = x[folds == k,]
+  CV.tr_y = y[folds != k,]
+  CV.ts_y = y[folds == k,]
   for(j in 1:length(minigrid)){
-    optim_list[j]<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=CV.train[,-1],y=CV.train[,1],lam=minigrid[[j]],q=2)[2]
+    optim_list[j]<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=CV.train,y=CV.tr_y,lam=minigrid[[j]],q=2)[2]
   }
-  bstlam[k]<-which.min(optim_list)
+  bstlam[k]<-minigrid[[which.min(optim_list)]]
+  err_cv[k]<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=CV.test,y=CV.ts_y,lam=bstlam[[k]],q=2)[2]
+  print(mean(err_cv))
   }
+
+
+
+optim_list
+
+#lasso
+for(k in 1:K){
+  CV.train = x[folds != k,]
+  CV.test = x[folds == k,]
+  CV.tr_y = y[folds != k,]
+  CV.ts_y = y[folds == k,]
+  for(j in 1:length(minigrid)){
+    optim_list[j]<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=CV.train,y=CV.tr_y,lam=minigrid[[j]],q=1)[2]
+  }
+  bstlam[k]<-minigrid[[which.min(optim_list)]]
+}
+
 
 View(bstlam)
 class(CV.train[,1])
 class(y)
+
+#test
+for(j in 1:length(minigrid)){
+  optim_list[[j]]<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=data4[,-1],y=data4[,1],lam=minigrid[j],q=2)[2]
+}
+optim_list
