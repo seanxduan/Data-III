@@ -152,8 +152,8 @@ for(k in 1:K){
   }
   bstlam[k]<-minigrid[[which.min(optim_list)]]
   err_cv[k]<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=CV.test,y=CV.ts_y,lam=bstlam[[k]],q=2)[2]
-  print(mean(err_cv))
   }
+err_cv
 
 
 
