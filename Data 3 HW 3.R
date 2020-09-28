@@ -99,6 +99,8 @@ e = .1*rnorm(1000)
 beta.truth = c(1.3,.01,-1.2,-.02,.6)
 x = cbind(x1,x2,x3,x4,x5)
 y = x%*%beta.truth + e
+data4<-cbind(y,x1,x2,x3,x4,x5)
+data4<-as.data.frame(data4)
 
 myRSSgen <- function(beta,x,y,lam,q){
   sum((y-x%*% beta)^2) + lam*sum((abs(beta))^q)
@@ -115,13 +117,16 @@ blat
 optim_list<-matrix(NA, nrow=length(minigrid), ncol=5)
 
 optim_list<-rep(NA)
+k<-1
 for(i in 1:length(minigrid)){
   for(j in 1:length(minigrid)){
-    optim_list[i]<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=x,y=y,lam=minigrid[[i]],q=minigrid[[j]])[2]
+    optim_list[k]<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=x,y=y,lam=minigrid[[i]],q=minigrid[[j]])[2]
+    k<-k+1
   }
 }
+which.min(optim_list)
 print(optim_list)
-#lambda = 10, q = 2
+#lambda = 0, q = 0
 
 #b
 ?seq
@@ -130,3 +135,22 @@ for(i in 1:length(minigrid)){
   paralist[i]<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=x,y=y,lam=10,q=minigrid[[i]])[1]
   }
 print(paralist)
+
+#c
+K=5
+folds = sample(1:K,nrow(data4),replace=T)
+optim_list<-rep(NA)
+bstlam<-rep(NA)
+
+for(k in 1:K){
+  CV.train = data4[folds != k,]
+  CV.test = data4[folds == k,]
+  for(j in 1:length(minigrid)){
+    optim_list[j]<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=CV.train[,-1],y=CV.train[,1],lam=minigrid[[j]],q=2)[2]
+  }
+  bstlam[k]<-which.min(optim_list)
+  }
+
+View(bstlam)
+class(CV.train[,1])
+class(y)
