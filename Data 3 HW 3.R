@@ -86,3 +86,47 @@ out=glmnet (x,y,alpha=1, lambda=grid)
 lasso.coef=predict (out ,type="coefficients",s= bestlam) [1:14,]
 lasso.coef
 #age cuts to 0
+
+# 4
+#prep code
+set.seed(1)
+x1 = rnorm(1000)
+x2 = rnorm(1000)
+x3 = rnorm(1000)
+x4 = rnorm(1000)
+x5 = rnorm(1000)
+e = .1*rnorm(1000)
+beta.truth = c(1.3,.01,-1.2,-.02,.6)
+x = cbind(x1,x2,x3,x4,x5)
+y = x%*%beta.truth + e
+
+myRSSgen <- function(beta,x,y,lam,q){
+  sum((y-x%*% beta)^2) + lam*sum((abs(beta))^q)
+}
+minigrid<-seq(from=0, to=4, by=.2)
+length(minigrid)
+
+cv.errors =matrix (NA,k,19, dimnames =list(NULL , paste (1:19) ))
+?matrix
+#a
+blat<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=x,y=y,lam=0,q=0)
+blat
+  
+optim_list<-matrix(NA, nrow=length(minigrid), ncol=5)
+
+optim_list<-rep(NA)
+for(i in 1:length(minigrid)){
+  for(j in 1:length(minigrid)){
+    optim_list[i]<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=x,y=y,lam=minigrid[[i]],q=minigrid[[j]])[2]
+  }
+}
+print(optim_list)
+#lambda = 10, q = 2
+
+#b
+?seq
+paralist<-rep(NA)
+for(i in 1:length(minigrid)){
+  paralist[i]<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=x,y=y,lam=10,q=minigrid[[i]])[1]
+  }
+print(paralist)
