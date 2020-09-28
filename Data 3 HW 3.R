@@ -143,10 +143,12 @@ optim_list<-rep(NA)
 bstlam<-rep(NA)
 
 for(k in 1:K){
-  CV.train = data4[folds != k,]
-  CV.test = data4[folds == k,]
+  CV.train = x[folds != k,]
+  CV.test = x[folds == k,]
+  CV.tr_y = y[folds != k,]
+  CV.ts_y = y[folds == k,]
   for(j in 1:length(minigrid)){
-    optim_list[j]<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=CV.train[,-1],y=CV.train[,1],lam=minigrid[[j]],q=2)[2]
+    optim_list[j]<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=CV.train,y=CV.tr_y,lam=minigrid[[j]],q=2)[2]
   }
   bstlam[k]<-which.min(optim_list)
   }
@@ -154,3 +156,9 @@ for(k in 1:K){
 View(bstlam)
 class(CV.train[,1])
 class(y)
+
+#test
+for(j in 1:length(minigrid)){
+  optim_list[[j]]<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=data4[,-1],y=data4[,1],lam=minigrid[j],q=2)[2]
+}
+optim_list
