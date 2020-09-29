@@ -1,0 +1,503 @@
+---
+title: "Data 3 HW 3"
+author: "Sean Duan"
+date: "9/28/2020"
+output: pdf_document
+always_allow_html: true
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(plyr)
+library(ggplot2)
+library(MASS)
+library(ISLR)
+library(class)
+library(boot)
+library(e1071)
+library(plotly)
+library(pls)
+library(glmnet)
+library(leaps)
+library(hdi)
+data(Boston)
+load("lakes_DA3.Rdata")
+lakes<-lakes_DA3
+lakes$lsecchi<-log(lakes$secchi)
+
+predict.regsubsets =function (object , newdata ,id ,...){
+  form=as.formula (object$call [[2]])
+  mat=model.matrix(form ,newdata )
+  coefi=coef(object ,id=id)
+  xvars=names(coefi)
+  mat[,xvars]%*%coefi
+}
+data(College)
+attach(College)
+```
+
+# 1.
+
+## A
+```{r 1a}
+train=sample(c(TRUE ,FALSE), nrow(College),rep=TRUE)
+test=(!train)
+```
+
+## B
+
+```{r 1b}
+p1_m1<-lm(Apps~.,data=College, subset = train)
+summary(p1_m1)
+print("MSE below")
+mean(p1_m1$residuals^2)
+```
+
+## C
+```{r 1c}
+x=model.matrix(Apps~.,data=College)[,-2]
+y=College$Apps
+grid=10^seq(10,-2, length =100)
+
+ridge.mod=glmnet (x,y,alpha=0, lambda=grid)
+y.test=y[test]
+
+set.seed(1)
+cv.out=cv.glmnet(x[train ,],y[ train],alpha=0)
+plot(cv.out)
+bestlam =cv.out$lambda.min
+print("this is our best lambda estimate")
+bestlam
+
+ridge.pred=predict (ridge.mod ,s=bestlam ,newx=x[test ,])
+print("this is our test error for our best lambda estimate")
+mean((ridge.pred -y.test)^2)
+
+out=glmnet(x,y,alpha=0)
+predict (out ,type="coefficients",s= bestlam) [1:18,]
+```
+
+## D
+```{r 1d}
+lasso.mod=glmnet(x[train ,],y[ train],alpha=1, lambda =grid)
+plot(lasso.mod)
+
+set.seed(1)
+cv.out=cv.glmnet(x[train ,],y[ train],alpha=1)
+plot(cv.out)
+bestlam =cv.out$lambda.min
+print("this is our best lambda estimate")
+bestlam
+
+lasso.pred=predict (lasso.mod ,s=bestlam ,newx=x[test ,])
+print("this is our test error for our best lambda estimate")
+mean((lasso.pred -y.test)^2)
+out=glmnet (x,y,alpha=1, lambda=grid)
+lasso.coef=predict (out ,type="coefficients",s= bestlam) [1:18,]
+lasso.coef
+```
+It seems like there are 16 non zero coefficients in our model.
+
+## E
+```{r 1e}
+set.seed(1)
+pcr.fit=pcr(Apps~., data=College , scale=TRUE ,validation ="CV")
+
+summary (pcr.fit)
+
+validationplot(pcr.fit ,val.type= "MSEP")
+
+pcr.fit=pcr(Apps~., data=College , subset=train ,scale=TRUE ,
+            validation ="CV")
+validationplot(pcr.fit ,val.type="MSEP")
+
+pcr.pred=predict (pcr.fit ,x[test ,],ncomp =17)
+print("below is our test error")
+mean((pcr.pred -y.test)^2)
+
+pcr.fit=pcr(Apps~., data=College ,scale=TRUE ,
+            ncomp =17)
+
+summary (pcr.fit)
+```
+The value of M we obtained using cross validation on our PCR was 17.
+
+## F
+```{r 1f}
+set.seed(1)
+pls.fit=plsr(Apps~., data=College , subset=train , scale=TRUE ,
+               validation ="CV")
+summary (pls.fit)
+
+pls.pred=predict (pls.fit ,x[test ,],ncomp =8)
+print("below is our test error")
+mean((pls.pred -y.test)^2)
+
+pls.fit=plsr(Apps~., data=College , scale=TRUE , ncomp=8)
+summary (pls.fit)
+```
+The value of M we obtained using cross validation on our pls model was 8.
+
+## G
+
+Our results seemed good, as our data was clean and we were able to clearly predict the outcome we were interested in. Looking at the proportion of our variance explained in our outcome across all our models in our output above, we had a R squared of roughly 90%, meaning that we can very accurately predict the number of college applications received. Looking at our test errors, it seems like our test error values were relatively spread out from each other, as our error estimate for the least squares estimate was superior to all of our other models. Additionally, we can see that our errors for the PLS and PCR were significantly better than our errors for the lasso and ridge regression methods, with the ridge regression error being particularly bad.
+
+# 2.
+## A
+```{r 2a}
+set.seed(1)
+train=sample(c(TRUE ,FALSE), nrow(Boston),rep=TRUE)
+test=(!train)
+Boston$chas<-as.factor(Boston$chas)
+```
+
+## B
+```{r 2b}
+p2_m1<-lm(crim~.,data=Boston, subset = train)
+summary(p2_m1)
+mean(p2_m1$residuals^2)
+```
+
+## C
+```{r 2c}
+regfit.best=regsubsets (crim~.,data=Boston[train ,],
+                        nvmax=13)
+test.mat=model.matrix(crim~.,data=Boston [test ,])
+
+val.errors =rep(NA ,13)
+for(i in 1:13){
+  coefi=coef(regfit.best ,id=i)
+  pred=test.mat[,names(coefi)]%*%coefi
+  val.errors[i]=mean((Boston$crim[test]-pred)^2)
+}
+
+which.min(val.errors)
+
+coef(regfit.best ,9)
+
+regfit.best=regsubsets (crim~.,data=Boston[test,] ,nvmax=13)
+coef(regfit.best ,9)
+p2_m2<-lm(crim~zn+nox+rm+dis+rad+tax+ptratio+lstat+medv, data =Boston[test,])
+print("below is test MSE")
+mean(p2_m2$residuals^2)
+```
+
+
+## D
+```{r 2d}
+x=model.matrix(crim~.,Boston )[,-1]
+y=Boston$crim
+y.test<-y[test]
+
+set.seed(1)
+cv.out=cv.glmnet(x[train ,],y[ train],alpha=0)
+plot(cv.out)
+bestlam =cv.out$lambda.min
+print("best value of lambda")
+bestlam
+
+grid=10^seq(10,-2, length =100)
+
+ridge.mod=glmnet (x,y,alpha=0, lambda=grid)
+
+ridge.pred=predict (ridge.mod ,s=bestlam ,newx=x[test ,])
+
+out=glmnet(x,y,alpha=0)
+
+predict (out ,type="coefficients",s= bestlam) [1:14,]
+print("test error below")
+mean((ridge.pred-y.test)^2)
+
+```
+
+## E
+```{r 2e}
+lasso.mod=glmnet(x[train ,],y[ train],alpha=1, lambda =grid)
+plot(lasso.mod)
+
+
+set.seed(1)
+cv.out=cv.glmnet(x[train ,],y[ train],alpha=1)
+plot(cv.out)
+bestlam =cv.out$lambda.min
+print("best value of lambda below")
+bestlam
+lasso.pred=predict (lasso.mod ,s=bestlam ,newx=x[test ,])
+print("test error below")
+mean((lasso.pred -y.test)^2)
+
+out=glmnet (x,y,alpha=1, lambda=grid)
+lasso.coef=predict (out ,type="coefficients",s= bestlam) [1:14,]
+lasso.coef
+```
+The age parameter has been estimated to be zero.
+
+## F
+```{r 2f}
+set.seed(2)
+pcr.fit=pcr(crim~., data=Boston , scale=TRUE ,validation ="CV")
+
+summary(pcr.fit)
+
+validationplot(pcr.fit ,val.type= "MSEP")
+
+pcr.fit=pcr(crim~., data=Boston , subset=train ,scale=TRUE ,
+            validation ="CV")
+validationplot(pcr.fit ,val.type="MSEP")
+
+pcr.pred=predict (pcr.fit ,x[test,],ncomp =13)
+mean((pcr.pred -y.test)^2)
+
+pcr.fit=pcr(y~x,scale=TRUE ,ncomp=13)
+summary (pcr.fit)
+print("M is 13")
+print("test error below")
+mean((pcr.pred -y.test)^2)
+```
+
+## G
+```{r 2g}
+set.seed(1)
+pls.fit=plsr(crim~., data=Boston , subset=train , scale=TRUE ,
+             validation ="CV")
+summary (pls.fit)
+
+pls.pred=predict (pls.fit ,x[test ,],ncomp =10)
+
+pls.fit=plsr(crim~., data=Boston , scale=TRUE , ncomp=10)
+summary (pls.fit)
+
+print("M is 10")
+print("test error is below")
+mean((pls.pred -y.test)^2)
+```
+
+## H
+It seems like the test errors for all of our methods are relatively close to each other, thus it seems like any of the above methods would be acceptable to use to predict our outcome. It seems like we can predict per capita crime rate relatively accurately, given that we can account for roughly half of the variance related to per capita crime rate. The variable that seems to be the most important would be Nox, given it's large coefficient. If I were to analyze the data again, I would perhaps use a different training and validation set, to see if there is significant variation in outcomes with a slightly different validation set.
+
+# 3.
+
+```{r 3}
+train=sample(c(TRUE ,FALSE), nrow(lakes),rep=TRUE)
+test=(!train)
+```
+
+## Ridge Regression
+Below is our code and output for the Ridge Regression 
+```{r 3RR}
+x=model.matrix(lsecchi~.-secchi,lakes )[,-c(4,25)]
+y=lakes$lsecchi
+y.test<-y[test]
+set.seed(1)
+cv.out=cv.glmnet(x[train,],y[train],alpha=0)
+plot(cv.out)
+bestlam =cv.out$lambda.min
+bestlam
+grid=10^seq(10,-2, length =100)
+ridge.mod=glmnet (x,y,alpha=0, lambda=grid)
+ridge.pred=predict (ridge.mod ,s=bestlam ,newx=x[test ,])
+out=glmnet(x,y,alpha=0)
+predict (out ,type="coefficients",s= bestlam) [1:24,]
+mean((ridge.pred-y.test)^2)
+
+```
+## Lasso
+Below is our code and output for the Lasso
+
+```{r 3lasso}
+lasso.mod=glmnet(x[train ,],y[ train],alpha=1, lambda =grid)
+plot(lasso.mod)
+set.seed(1)
+cv.out=cv.glmnet(x[train ,],y[ train],alpha=1)
+plot(cv.out)
+bestlam =cv.out$lambda.min
+bestlam
+lasso.pred=predict (lasso.mod ,s=bestlam ,newx=x[test ,])
+mean((lasso.pred -y.test)^2)
+
+out=glmnet (x,y,alpha=1, lambda=grid)
+lasso.coef=predict (out ,type="coefficients",s= bestlam) [1:24,]
+lasso.coef
+
+cv.out2=cv.glmnet(x,y,alpha=1,nfolds=5)
+cv.out2
+```
+## PC regression
+Below is our code and output for the Principle Components regression
+
+```{r 3pcr}
+set.seed(1)
+pcr.fit=pcr(lsecchi~. -secchi, data=lakes , scale=TRUE ,validation ="CV")
+summary (pcr.fit)
+validationplot(pcr.fit ,val.type= "MSEP")
+pcr.fit=pcr(lsecchi~. -secchi, data=lakes , subset=train ,scale=TRUE ,
+          validation ="CV")
+validationplot(pcr.fit ,val.type="MSEP")
+
+pcr.pred=predict (pcr.fit ,x[test ,],ncomp =12)
+mean((pcr.pred -y.test)^2)
+
+pcr.fit=pcr(lsecchi~. -secchi, data=lakes , scale=TRUE, ncomp=12)
+summary (pcr.fit)
+
+```
+## PLS
+Below is our code and output for the partial least squares regression.
+
+```{r 3pls}
+set.seed(1)
+pls.fit=plsr(lsecchi~.-secchi, data=lakes , subset=train , scale=TRUE ,
+             validation ="CV")
+summary (pls.fit)
+
+pls.pred=predict (pls.fit ,x[test ,],ncomp =19)
+mean((pls.pred -y.test)^2)
+pls.fit=plsr(lsecchi~.-secchi, data=lakes , scale=TRUE , ncomp=19)
+summary (pls.fit)
+```
+Looking at our four methods, I believe that the best model amongst our choices is the lasso regression. I chose between the four methods primarily by considering the differences in test error, as well as considering concerns of interpretability. Looking at test error specifically, while the ridge regression had the lowest test error out of all the models, the lasso regression had comparable error, while being significantly more parsimonius, as the final lasso model comprised 7 less predictors than the full ridge regression model.
+
+We selected the variables for our lasso, pls, and pcr models by using a holdout sample to cross validate our results.
+
+5 fold cross validation on our lasso model confirms that a 13 parameter model (our 12 predictors, plus an intercept) is the best model we can be using.
+
+# 4.
+```{r 4}
+set.seed(1)
+x1 = rnorm(1000)
+x2 = rnorm(1000)
+x3 = rnorm(1000)
+x4 = rnorm(1000)
+x5 = rnorm(1000)
+e = .1*rnorm(1000)
+beta.truth = c(1.3,.01,-1.2,-.02,.6)
+x = cbind(x1,x2,x3,x4,x5)
+y = x%*%beta.truth + e
+data4<-cbind(y,x1,x2,x3,x4,x5)
+data4<-as.data.frame(data4)
+
+myRSSgen <- function(beta,x,y,lam,q){
+  sum((y-x%*% beta)^2) + lam*sum((abs(beta))^q)
+}
+minigrid<-seq(from=0, to=4, by=.2)
+
+```
+
+## A
+```{r 4a}
+optim_list<-matrix(NA, nrow=length(minigrid), ncol=length(minigrid))
+for(i in 1:length(minigrid)){
+  for(j in 1:length(minigrid)){
+    optim_list[i,j]<-as.numeric(optim(rep(0,ncol(x)),myRSSgen,method='CG',x=x,y=y,lam=minigrid[i],q=minigrid[j])[2])
+    }
+}
+print(optim_list)
+
+```
+The value of lambda and q we obtained was 0 in both cases.
+## B
+```{r 4b}
+paralist<-rep(NA)
+for(i in 1:length(minigrid)){
+  paralist[i]<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=x,y=y,lam=10,q=minigrid[[i]])[1]
+  }
+print(paralist)
+```
+It seems like our first, third, and last beta parameters change very little as a result of us using various values of q, however, it seems like our second and fourth beta parameters change a great deal, especially from q values of 0 to 1.
+
+## C
+```{r 4c}
+K=5
+folds = sample(1:K,nrow(data4),replace=T)
+optim_list<-rep(NA)
+bstlam<-rep(NA)
+err_cv<-rep(NA)
+betalist<-rep(NA)
+for(k in 1:K){
+  CV.train = x[folds != k,]
+  CV.test = x[folds == k,]
+  CV.tr_y = y[folds != k,]
+  CV.ts_y = y[folds == k,]
+  for(j in 1:length(minigrid)){
+    optim_list[j]<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=CV.train,y=CV.tr_y,lam=minigrid[[j]],q=2)[2]
+  }
+  bstlam[k]<-minigrid[[which.min(optim_list)]]
+  betalist[k]<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=CV.train,y=CV.tr_y,lam=bstlam[[k]],q=2)[1]
+    err_cv[k]<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=CV.test,y=CV.ts_y,lam=bstlam[[k]],q=2)[2]
+}
+mean(as.numeric(unlist(err_cv)))
+plot(x=err_cv, y=bstlam)
+print("best parameter estimates below")
+optim(rep(0,ncol(x)),myRSSgen,method='CG',x=x,y=y,lam=0,q=2)[1]
+```
+
+
+## D
+```{r 4d}
+K=5
+folds = sample(1:K,nrow(data4),replace=T)
+optim_list<-rep(NA)
+bstlam<-rep(NA)
+err_cv<-rep(NA)
+betalist<-rep(NA)
+for(k in 1:K){
+  CV.train = x[folds != k,]
+  CV.test = x[folds == k,]
+  CV.tr_y = y[folds != k,]
+  CV.ts_y = y[folds == k,]
+  for(j in 1:length(minigrid)){
+    optim_list[j]<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=CV.train,y=CV.tr_y,lam=minigrid[[j]],q=1)[2]
+  }
+  bstlam[k]<-minigrid[[which.min(optim_list)]]
+  betalist[k]<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=CV.train,y=CV.tr_y,lam=bstlam[[k]],q=1)[1]
+    err_cv[k]<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=CV.test,y=CV.ts_y,lam=bstlam[[k]],q=1)[2]
+}
+mean(as.numeric(unlist(err_cv)))
+plot(x=err_cv, y=bstlam)
+
+print("best parameter estimates below")
+optim(rep(0,ncol(x)),myRSSgen,method='CG',x=x,y=y,lam=0,q=1)[1]
+
+```
+
+## E
+```{r 4e}
+K=5
+folds = sample(1:K,nrow(data4),replace=T)
+optim_list<-rep(NA)
+bstlam<-rep(NA)
+bstq<-rep(NA)
+err_cv<-rep(NA)
+betalist<-rep(NA)
+optim_list<-matrix(NA, nrow=length(minigrid), ncol=length(minigrid))
+for(k in 1:K){
+  CV.train = x[folds != k,]
+  CV.test = x[folds == k,]
+  CV.tr_y = y[folds != k,]
+  CV.ts_y = y[folds == k,]
+  for(i in 1:length(minigrid)){
+    for(j in 1:length(minigrid)){
+      optim_list[i,j]<-as.numeric(optim(rep(0,ncol(x)),myRSSgen,method='CG',x=x,y=y,lam=minigrid[i],q=minigrid[j])[2])
+    }
+  }
+  obj<-which(optim_list == min(optim_list), arr.ind=TRUE)
+  bstlam[k]<-minigrid[[obj[1,1]]]
+  bstq[k]<-minigrid[[obj[1,2]]]
+  err_cv[k]<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=CV.test,y=CV.ts_y,lam=bstlam[[k]],q=bstq[[k]])[2]
+}
+mean(as.numeric(unlist(err_cv)))
+#bstlam
+#bstq
+
+#contour(x=bstlam, y=bstq, z=err_cv)
+
+print("best parameter estimates below")
+optim(rep(0,ncol(x)),myRSSgen,method='CG',x=x,y=y,lam=0,q=0)[1]
+```
+Given that our estimates for best lambda and best q values were 0 across all our folds, the 'contour' function was unable to produce a contour plot, as it expected increasing x and y values.
+
+## F
+
+Overall, it seems like there is not much point in considering different values of q. The reasoning I have for this is fairly simple, that conceptually, values of q other than 1 or 2 make very little sense from a conceptual standpoint, looking at our formula for lasso and ridge regression as a generalized form of the equation we were presented at the beginning of the problem.
+
+Additionally, from a test error generation standpoint, it seems like values of q wherein q is set to 0 seem to dominate all other options, to the exclusion of the importance of various values of lambda as well. Given that lambda has essentially no effect on test error if q is 0, I would posit that there is no purpose to consider different values of q in this case.

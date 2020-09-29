@@ -87,6 +87,113 @@ lasso.coef=predict (out ,type="coefficients",s= bestlam) [1:14,]
 lasso.coef
 #age cuts to 0
 
+#f
+library(pls)
+set.seed(2)
+pcr.fit=pcr(crim~., data=Boston , scale=TRUE ,validation ="CV")
+
+summary(pcr.fit)
+
+validationplot(pcr.fit ,val.type= "MSEP")
+
+pcr.fit=pcr(crim~., data=Boston , subset=train ,scale=TRUE ,
+            validation ="CV")
+validationplot(pcr.fit ,val.type="MSEP")
+
+pcr.pred=predict (pcr.fit ,x[test,],ncomp =13)
+mean((pcr.pred -y.test)^2)
+
+pcr.fit=pcr(y~x,scale=TRUE ,ncomp=13)
+summary (pcr.fit)
+#M is 13
+mean((pcr.pred -y.test)^2)
+
+#g
+set.seed(1)
+pls.fit=plsr(crim~., data=Boston , subset=train , scale=TRUE ,
+             validation ="CV")
+summary (pls.fit)
+
+pls.pred=predict (pls.fit ,x[test ,],ncomp =10)
+
+pls.fit=plsr(crim~., data=Boston , scale=TRUE , ncomp=10)
+summary (pls.fit)
+
+#m is 10
+mean((pls.pred -y.test)^2)
+
+#3
+load("lakes_DA3.Rdata")
+lakes<-lakes_DA3
+lakes$lsecchi<-log(lakes$secchi)
+train=sample(c(TRUE ,FALSE), nrow(lakes),rep=TRUE)
+test=(!train)
+#RR
+library(glmnet)
+x=model.matrix(lsecchi~.-secchi,lakes )[,-c(4,25)]
+View(x)
+y=lakes$lsecchi
+y.test<-y[test]
+set.seed(1)
+cv.out=cv.glmnet(x[train,],y[train],alpha=0)
+plot(cv.out)
+bestlam =cv.out$lambda.min
+bestlam
+grid=10^seq(10,-2, length =100)
+ridge.mod=glmnet (x,y,alpha=0, lambda=grid)
+ridge.pred=predict (ridge.mod ,s=bestlam ,newx=x[test ,])
+out=glmnet(x,y,alpha=0)
+predict (out ,type="coefficients",s= bestlam) [1:24,]
+mean((ridge.pred-y.test)^2)
+
+#Lasso
+lasso.mod=glmnet(x[train ,],y[ train],alpha=1, lambda =grid)
+plot(lasso.mod)
+set.seed(1)
+cv.out=cv.glmnet(x[train ,],y[ train],alpha=1)
+plot(cv.out)
+bestlam =cv.out$lambda.min
+bestlam
+lasso.pred=predict (lasso.mod ,s=bestlam ,newx=x[test ,])
+mean((lasso.pred -y.test)^2)
+
+out=glmnet (x,y,alpha=1, lambda=grid)
+lasso.coef=predict (out ,type="coefficients",s= bestlam) [1:24,]
+lasso.coef
+
+#pcr
+library(pls)
+set.seed(1)
+pcr.fit=pcr(lsecchi~. -secchi, data=lakes , scale=TRUE ,validation ="CV")
+summary (pcr.fit)
+validationplot(pcr.fit ,val.type= "MSEP")
+pcr.fit=pcr(lsecchi~. -secchi, data=lakes , subset=train ,scale=TRUE ,
+          validation ="CV")
+validationplot(pcr.fit ,val.type="MSEP")
+
+pcr.pred=predict (pcr.fit ,x[test ,],ncomp =12)
+mean((pcr.pred -y.test)^2)
+
+pcr.fit=pcr(y~x,scale=TRUE ,ncomp=12)
+summary (pcr.fit)
+
+#pls
+set.seed(1)
+pls.fit=plsr(lsecchi~.-secchi, data=lakes , subset=train , scale=TRUE ,
+             validation ="CV")
+summary (pls.fit)
+
+pls.pred=predict (pls.fit ,x[test ,],ncomp =19)
+mean((pls.pred -y.test)^2)
+pls.fit=plsr(lsecchi~.-secchi, data=lakes , scale=TRUE , ncomp=19)
+summary (pls.fit)
+
+#lasso cv?
+x <- matrix(rnorm(100*1000), nrow = 100, ncol = 1000)
+y <- x[,1] * 2 + x[,2] * 2.5 + rnorm(100)
+sel <- lasso.cv(x, y)
+sel
+# }
 # 4
 #prep code
 set.seed(1)
@@ -114,19 +221,16 @@ cv.errors =matrix (NA,k,19, dimnames =list(NULL , paste (1:19) ))
 blat<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=x,y=y,lam=0,q=0)
 blat
   
-optim_list<-matrix(NA, nrow=length(minigrid), ncol=5)
-
+optim_list<-matrix(NA, nrow=length(minigrid), ncol=length(minigrid))
+#fucking with it rn
 optim_list<-rep(NA)
-k<-1
 for(i in 1:length(minigrid)){
   for(j in 1:length(minigrid)){
-    optim_list[k]<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=x,y=y,lam=minigrid[[i]],q=minigrid[[j]])[2]
-    k<-k+1
-  }
+    optim_list[i,j]<-as.numeric(optim(rep(0,ncol(x)),myRSSgen,method='CG',x=x,y=y,lam=minigrid[i],q=minigrid[j])[2])
+    }
 }
 which.min(optim_list)
 print(optim_list)
-#lambda = 0, q = 0
 
 #b
 ?seq
@@ -136,12 +240,22 @@ for(i in 1:length(minigrid)){
   }
 print(paralist)
 
+beta<-paralist[1]
+#
+beta<-as.numeric(unlist(beta))
+
+beta
+View(beta)
+class(beta)
+View(beta.truth)
 #c
 K=5
 folds = sample(1:K,nrow(data4),replace=T)
 optim_list<-rep(NA)
 bstlam<-rep(NA)
 err_cv<-rep(NA)
+betalist<-rep(NA)
+betaguess<-rep(NA)
 for(k in 1:K){
   CV.train = x[folds != k,]
   CV.test = x[folds == k,]
@@ -151,15 +265,43 @@ for(k in 1:K){
     optim_list[j]<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=CV.train,y=CV.tr_y,lam=minigrid[[j]],q=2)[2]
   }
   bstlam[k]<-minigrid[[which.min(optim_list)]]
+  betalist[k]<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=CV.train,y=CV.tr_y,lam=bstlam[[k]],q=2)[1]
+  betaguess<-as.numeric(unlist(betalist[k]))
   err_cv[k]<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=CV.test,y=CV.ts_y,lam=bstlam[[k]],q=2)[2]
   }
 err_cv
+as.numeric(err_cv)
 
+#wrong but it puts out?
+K=5
+folds = sample(1:K,nrow(data4),replace=T)
+optim_list<-rep(NA)
+bstlam<-rep(NA)
+err_cv<-rep(NA)
+betalist<-rep(NA)
+for(k in 1:K){
+  CV.train = x[folds != k,]
+  CV.test = x[folds == k,]
+  CV.tr_y = y[folds != k,]
+  CV.ts_y = y[folds == k,]
+  for(j in 1:length(minigrid)){
+    optim_list[j]<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=CV.train,y=CV.tr_y,lam=minigrid[[j]],q=2)[2]
+  }
+  bstlam[k]<-minigrid[[which.min(optim_list)]]
+  betalist[k]<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=CV.train,y=CV.tr_y,lam=bstlam[[k]],q=2)[1]
+    err_cv[k]<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=CV.test,y=CV.ts_y,lam=bstlam[[k]],q=2)[2]
+}
+mean(as.numeric(unlist(err_cv)))
+plot(x=err_cv, y=bstlam)
 
-
-optim_list
-
+#d
 #lasso
+K=5
+folds = sample(1:K,nrow(data4),replace=T)
+optim_list<-rep(NA)
+bstlam<-rep(NA)
+err_cv<-rep(NA)
+betalist<-rep(NA)
 for(k in 1:K){
   CV.train = x[folds != k,]
   CV.test = x[folds == k,]
@@ -169,15 +311,44 @@ for(k in 1:K){
     optim_list[j]<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=CV.train,y=CV.tr_y,lam=minigrid[[j]],q=1)[2]
   }
   bstlam[k]<-minigrid[[which.min(optim_list)]]
+  err_cv[k]<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=CV.test,y=CV.ts_y,lam=bstlam[[k]],q=1)[2]
 }
+mean(as.numeric(unlist(err_cv)))
+plot(x=err_cv, y=bstlam)
 
-
-View(bstlam)
-class(CV.train[,1])
-class(y)
-
-#test
-for(j in 1:length(minigrid)){
-  optim_list[[j]]<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=data4[,-1],y=data4[,1],lam=minigrid[j],q=2)[2]
+#e
+K=5
+folds = sample(1:K,nrow(data4),replace=T)
+optim_list<-rep(NA)
+bstlam<-rep(NA)
+bstq<-rep(NA)
+err_cv<-rep(NA)
+betalist<-rep(NA)
+optim_list<-matrix(NA, nrow=length(minigrid), ncol=length(minigrid))
+for(k in 1:K){
+  CV.train = x[folds != k,]
+  CV.test = x[folds == k,]
+  CV.tr_y = y[folds != k,]
+  CV.ts_y = y[folds == k,]
+  for(i in 1:length(minigrid)){
+    for(j in 1:length(minigrid)){
+      optim_list[i,j]<-as.numeric(optim(rep(0,ncol(x)),myRSSgen,method='CG',x=x,y=y,lam=minigrid[i],q=minigrid[j])[2])
+    }
+  }
+  obj<-which(optim_list == min(optim_list), arr.ind=TRUE)
+  bstlam[k]<-minigrid[[obj[1,1]]]
+  bstq[k]<-minigrid[[obj[1,2]]]
+  err_cv[k]<-optim(rep(0,ncol(x)),myRSSgen,method='CG',x=CV.test,y=CV.ts_y,lam=bstlam[[k]],q=bstq[[k]])[2]
 }
-optim_list
+mean(as.numeric(unlist(err_cv)))
+bstlam
+bstq
+
+library(plotly)
+fig <- plot_ly(
+  x = bstlam,
+  y = bstq,
+  z = err_cv,
+  type = "contour" )
+
+fig
