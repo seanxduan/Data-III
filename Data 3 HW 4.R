@@ -5,7 +5,7 @@ library(ISLR)
 library(MASS)
 library(ggplot2)
 data(Boston)
-
+View(Boston)
 #A
 #polynomail reg
 p2_m1<-lm(nox~poly(dis ,3) ,data=Boston)
@@ -110,11 +110,12 @@ lines(fit ,col="red",lwd =2)
 lines(fit2 ,col="blue",lwd=2)
 legend ("topright",legend=c("10 DF" ,"15.42 DF"),col=c("red","blue"),lty=1,lwd=2, cex =.8)
 #we can specify DF in smooth.spline, but we can also let CV auto determine it w/ CV = TRUE command
-
-fit2$spar
+length(fit$x)
+fit2$lambda
 #what does this weighting mean??
 fit2$pen.crit
-
+sum((fit2$y - Boston$nox[1:412])^2)
+#??? lets loook @ this later
 #toy example from stackexchange
 x = seq(1:18)
 y = c(1:3,5,4,7:3,2*(2:5),rep(10,4))
@@ -138,3 +139,40 @@ R > spars[which.min(ss)]
 [1] 0.381
 ## this code fits spar directly using spar fxn and cross validation?
 
+##3
+load("lakes_DA3.Rdata")
+lakes<-lakes_DA3
+lakes$lsecchi<-log(lakes$secchi)
+lakes2<-lakes[,-c(4,25)]
+
+for(i in 1:23){
+  plot(y=lakes$lsecchi, x=lakes2[,i], xlab=colnames(lakes2)[i])
+}
+  
+#chla, mean depth,tn,tp, mean annual temp,spring temp,summer temp,
+#fall temp, fall precip, iws_wetland
+#it looks like w/ these plots we only want to look @ these variables
+
+#univariate filter w/ our goal of interest
+vars <- c("chla","mean_depth", "tn", "tp", "mean_annual_temp", "mean_spring_temp", "mean_summer_temp",
+          "mean_fall_temp", "mean_fall_precip", "iws_wetland")
+comb.vars <- expand.grid(vars, vars, stringsAsFactors = FALSE)
+comb.vars <- comb.vars[comb.vars[,1] != comb.vars[,2],]
+i.vars <- apply(comb.vars, 1, paste, collapse = "+")
+View(i.vars)
+#code to make 2 items combos of our 10 variables
+library(boot)
+cv_error<-list(NA)
+modelfits<-list(NA)
+for(i in 1:length(i.vars)) {
+  modelformula <- paste("lsecchi ~", i.vars[i])
+  modelfits[[i]] <- glm(as.formula(modelformula), family = "gaussian", data = lakes)
+  cv_error[[i]]=cv.glm(lakes,modelfits[[i]] ,K=5)$delta[1]
+}
+cv_error
+which.min(cv_error)
+
+best_model<-modelfits[[8]]
+summary(best_model)
+glm.probs=predict(best_model, Pima.te ,type="response")
+#now try to run the above loop using SPLINES???
