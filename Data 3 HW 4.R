@@ -142,6 +142,23 @@ R > spars[which.min(ss)]
 [1] 0.381
 ## this code fits spar directly using spar fxn and cross validation?
 
+#G loess code
+#performing local regression w/ Loess fxn
+## code
+rangespan<-seq(from=0.1, to=5, length.out = 20)
+check<-list(NA)
+testlist<-list(NA)
+#clde to c lone
+for(i in 1:length(rangespan)){
+  testlist[[i]]<-loess(nox ~ dis, span = rangespan[[i]], data = Boston, subset = train)
+  check[[i]]<-testlist[[i]]$s
+  }
+
+testlist[[1]]
+
+which.min(check)
+#lower values of RSE indicate a better fit.
+
 ##3
 load("lakes_DA3.Rdata")
 lakes<-lakes_DA3
