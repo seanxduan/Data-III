@@ -176,3 +176,7 @@ best_model<-modelfits[[8]]
 summary(best_model)
 glm.probs=predict(best_model, Pima.te ,type="response")
 #now try to run the above loop using SPLINES???
+
+
+o<-glm(lsecchi~mean_fall_precip+poly(chla,2),data=lakes,family="gaussian")
+cv.glm(data = lakes,o,K=5)$delta[1]
