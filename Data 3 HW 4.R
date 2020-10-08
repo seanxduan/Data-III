@@ -283,3 +283,101 @@ moderror
 #2 of our methods agreed that our best model was the 2 var model 2 tn and CHLA, compare our smooth spline vs our bs
 
 #our best model was fitting using natural splines, model 18 mean fall temp and depth
+
+levee<-read.delim("mmr_levee.txt", sep = "", header = FALSE)
+colnames(levee)<-c("failure","year","river_mile","sediment","borrow_pit","meander_loc","channel_width","flood_width","constriction_fact","land_type","vege_buffer","channel_sinu","dredge_intense","bank_revetment")
+levee$failure<-as.factor(levee$failure)
+levee$meander_loc<-as.factor(levee$meander_loc)
+levee$land_type<-as.factor(levee$land_type)
+levee$borrow_pit<-as.factor(levee$borrow_pit)
+
+for(i in 2:14){
+  plot(y=levee$failure, x=levee[,i], xlab=colnames(levee)[i])
+}
+#checking overlaid plots
+plot(y=levee$failure, x=jitter(levee$bank_revetment))
+
+levels(levee$failure)
+#relvaent lvls?
+#land type matters, meander location
+#looking at the plot only these two things matter
+plot(y=levee$land_type, x=levee$meander_loc)
+#perhaps slight correlation b/w these factors but not serious
+train=sample(70,35)
+levee_test<-levee[-train,]
+#consider collapsing categories (collapse 1-3 and 2-4 in meander
+#collapse 1 vs 2-3-4 in land_type)
+
+#fit using glm
+library(boot)
+cost <- function(r, pi = 0) mean(abs(r-pi) > 0.5)
+modelfits<- glm(failure ~ meander_loc + land_type, family = "binomial", data = levee, subset=train)
+glm.probs=predict(modelfits,newdata=levee_test,type="response")
+glm.pred=rep(0 ,35)
+glm.pred[glm.probs >.5]=1
+
+table(glm.pred,levee_test$failure)
+mean(glm.pred==levee_test$failure)
+summary(modelfits)
+library(lme4)
+BIC(modelfits)
+#fit using splines
+library(splines)
+modelfits<- glm(failure ~ bs(meander_loc, df=3) + bs(land_type, df=3), family = "binomial", data = levee)
+cv_error=cv.glm(levee,modelfits,K=5, cost=cost)$delta[1]
+cv_error
+# unsure if this is valid
+
+#prep for LDA
+library(MASS)
+
+lda.fit<-lda(failure~meander_loc + land_type, data = levee, subset = train)
+
+lda.pred=predict(lda.fit , levee_test, type = "response")
+lda.class=lda.pred$class
+table(lda.class ,levee_test$failure)
+mean(lda.class==levee_test$failure)
+
+#for QDA
+#cant fit w/ anything other than just meander_loc
+qda.fit<-qda(failure~meander_loc, data = levee, subset = train)
+qda.pred=predict(qda.fit , levee_test, type = "response")
+qda.class=qda.pred$class
+table(qda.class ,levee_test$failure)
+mean(qda.class==levee_test$failure)
+
+#lets try fwd stepwise
+library(leaps)
+regfit.bwd=regsubsets(failure~.,data=levee, nvmax=13,method ="backward")
+summary(regfit.bwd)
+regfit.fwd=regsubsets(failure~.,data=levee, nvmax=13,method ="forward")
+summary(regfit.fwd)
+
+regfit.full=regsubsets(failure~.,data=levee, nvmax=13)
+reg.summary<-summary(regfit.full)
+reg.summary$rsq
+reg.summary$adjr2
+reg.summary$bic
+#7 variable model looking at best subset reg
+#just sediment has best BIC
+cost <- function(r, pi = 0) mean(abs(r-pi) > 0.5)
+modelfits<- glm(failure ~ sediment, family = "binomial", data = levee, subset=train)
+glm.probs=predict(modelfits,newdata=levee_test,type="response")
+glm.pred=rep(0 ,35)
+glm.pred[glm.probs >.5]=1
+table(glm.pred,levee_test$failure)
+mean(glm.pred==levee_test$failure)
+#lda w/ sed
+library(MASS)
+lda.fit<-lda(failure~ sediment, data = levee, subset = train)
+lda.pred=predict(lda.fit , levee_test, type = "response")
+lda.class=lda.pred$class
+table(lda.class ,levee_test$failure)
+mean(lda.class==levee_test$failure)
+
+#qda w/ sed
+qda.fit<-qda(failure~sediment, data = levee, subset = train)
+qda.pred=predict(qda.fit , levee_test, type = "response")
+qda.class=qda.pred$class
+table(qda.class ,levee_test$failure)
+mean(qda.class==levee_test$failure)
