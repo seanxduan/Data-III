@@ -1,4 +1,7 @@
 #Data 3 HW 4
+#1
+
+
 #2
 
 library(ISLR)
@@ -139,6 +142,23 @@ R > spars[which.min(ss)]
 [1] 0.381
 ## this code fits spar directly using spar fxn and cross validation?
 
+#G loess code
+#performing local regression w/ Loess fxn
+## code
+rangespan<-seq(from=0.1, to=5, length.out = 20)
+check<-list(NA)
+testlist<-list(NA)
+#clde to c lone
+for(i in 1:length(rangespan)){
+  testlist[[i]]<-loess(nox ~ dis, span = rangespan[[i]], data = Boston, subset = train)
+  check[[i]]<-testlist[[i]]$s
+  }
+
+testlist[[1]]
+
+which.min(check)
+#lower values of RSE indicate a better fit.
+
 ##3
 load("lakes_DA3.Rdata")
 lakes<-lakes_DA3
@@ -171,12 +191,91 @@ for(i in 1:length(i.vars)) {
 }
 cv_error
 which.min(cv_error)
-
+#.2861
 best_model<-modelfits[[8]]
 summary(best_model)
-glm.probs=predict(best_model, Pima.te ,type="response")
+
+
 #now try to run the above loop using SPLINES???
 
+#lets fit bs splines
+library(splines)
+#CREATE two vectors of unique combos
+var_list<-comb.vars[!duplicated(t(apply(comb.vars, 1, sort))), ]
 
-o<-glm(lsecchi~mean_fall_precip+poly(chla,2),data=lakes,family="gaussian")
-cv.glm(data = lakes,o,K=5)$delta[1]
+#jesus this is some ugly code
+i<-1
+cv_error<-list(NA)
+modelfits<-list(NA)
+
+for(i in 1:nrow(var_list)) {
+  modelformula<-paste("lsecchi~","bs(",var_list[[i,1]],",df=3)+bs(",var_list[[i,2]],",df=3)")
+  modelfits[[i]]<-glm(as.formula(modelformula), family = "gaussian",data=lakes)
+  cv_error[[i]]<-cv.glm(lakes, modelfits[[i]], K=5)$delta[1]
+}
+cv_error
+which.min(cv_error)
+
+#.179335
+best_model<-modelfits[[18]]
+summary(best_model)
+
+#fit using ns splines
+#jesus this is some ugly code
+i<-1
+cv_error<-list(NA)
+modelfits<-list(NA)
+
+for(i in 1:nrow(var_list)) {
+  modelformula<-paste("lsecchi~","ns(",var_list[[i,1]],",df=3)+ns(",var_list[[i,2]],",df=3)")
+  modelfits[[i]]<-glm(as.formula(modelformula), family = "gaussian",data=lakes)
+  cv_error[[i]]<-cv.glm(lakes, modelfits[[i]], K=5)$delta[1]
+}
+cv_error
+which.min(cv_error)
+#.1359
+best_model<-modelfits[[18]]
+summary(best_model)
+
+#test w/ wikle
+i<-1
+cv_error<-list(NA)
+modelfits<-list(NA)
+
+for(i in 1:nrow(var_list)) {
+  modelfits[[i]]<-glm(lsecchi~ ns(var_list[i,1], df = 3) + ns(var_list[i,2], df=3), family = "gaussian",data=lakes)
+  cv_error[[i]]<-cv.glm(lakes, modelfits[[i]], K=5)$delta[1]
+}
+# doesn't work, can't directly call the item off var_list?
+
+#time to go wild with gam? using the gamclass fxn as a stand in for cross validation
+library(gam)
+errorlist<-list(NA)
+bestmodel<-list(NA)
+i=1
+#code for our own k-fold cv
+K=5
+folds = sample(1:K,nrow(lakes),replace=T)
+modelfits<-list(NA)
+errorlist<-list(NA)
+bestmodel<-list(NA)
+moderror<-list(NA)
+for(k in 1:K){
+  CV.train = lakes[folds != k,]
+  CV.test = lakes[folds == k,]
+  CV.ts_y = CV.test$lsecchi
+  for(i in 1:nrow(var_list)) {
+    modelformula<-paste("lsecchi~","s(",var_list[[i,1]],",4)+s(",var_list[[i,2]],",4)")
+    modelfits[[i]]<-gam(as.formula(modelformula), data=CV.train)
+    errorlist[[i]]<-sum((CV.ts_y-predict(modelfits[[i]], newdata=CV.test))^2)
+      }
+  moderror[[k]]<-errorlist[[which.min(errorlist)]]/nrow(CV.test)
+  bestmodel[[k]]<-which.min(errorlist)
+}
+bestmodel
+moderror
+#is this code even ... good? YES~!
+#0.159,0.1357,0.1667
+#2 of our methods agreed that our best model was the 2 var model 2 tn and CHLA, compare our smooth spline vs our bs
+
+#our best model was fitting using natural splines, model 18 mean fall temp and depth
