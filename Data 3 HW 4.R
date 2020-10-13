@@ -148,16 +148,20 @@ R > spars[which.min(ss)]
 rangespan<-seq(from=0.1, to=5, length.out = 20)
 check<-list(NA)
 testlist<-list(NA)
-#clde to c lone
+#kfold code from wikle
+#modfied to just a plain test/train setup
+rangespan<-seq(from=0.1, to=5, length.out = 20)
+check<-list(NA)
+testlist<-list(NA)
 for(i in 1:length(rangespan)){
-  testlist[[i]]<-loess(nox ~ dis, span = rangespan[[i]], data = Boston, subset = train)
-  check[[i]]<-testlist[[i]]$s
-  }
-
-testlist[[1]]
-
+  testlist[[i]]<-loess(nox ~ dis, span = rangespan[[i]], data = Boston, subset = train, control = loess.control(surface = "direct"))
+  predict_list<-predict(testlist[[i]], data.frame(dis=Boston$dis[-train]))
+  check[[i]]<-sum((predict_list-Boston$nox[-train])^2, na.rm = TRUE)
+}
 which.min(check)
-#lower values of RSE indicate a better fit.
+
+rangespan[which.min(check)]
+
 
 ##3
 load("lakes_DA3.Rdata")
