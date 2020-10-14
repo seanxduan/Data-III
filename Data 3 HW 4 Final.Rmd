@@ -1,16 +1,72 @@
-#Data 3 HW 4
-#1
+---
+title: "Data 3 HW 4"
+author: "Sean Duan"
+date: "10/8/2020"
+output: pdf_document
+always_allow_html: true
+---
 
-
-#2
-
-library(ISLR)
-library(MASS)
+```{r setup, include=FALSE}
+library(tidyverse)
+library(plyr)
 library(ggplot2)
+library(MASS)
+library(ISLR)
+library(glmnet)
+library(leaps)
+library(splines)
+library(boot)
+library(gam)
+```
+
+# 1.
+
+## A
+
+$$a_1 = \beta_0, b_1 = \beta_1, c_1 = \beta_2, d_1 = \beta_3 $$
+##  B
+
+$$a_2 = \beta_0 - \beta_4 \xi^3, b_2 = \beta_1 + 3 \beta_4 \xi^2, c_2 = \beta_2 - 3 \beta_4 \xi, d_2 = \beta_3 + \beta_4$$
+
+## C
+
+$$f_1(\xi) = \beta_0 + \beta_1 \xi + \beta_2 \xi^2 + \beta_3 \xi^3$$
+
+$$f_2(\xi) = (\beta_0 - \beta_4 \xi^3) + (\beta_1 + 3 \beta_4 \xi^2) \xi + (\beta_2 - 3 \beta_4 \xi) \xi^2 + (\beta_3 + \beta_4) \xi^3$$
+
+$$\beta_0 - \beta_4 \xi^3 + \beta_1 \xi + 3 \beta_4 \xi^3 + \beta_2 \xi^2 - 3 \beta_4 \xi^3 + \beta_3 \xi^3 + \beta_4 \xi^3$$
+$$ \beta_0 + \beta_1 \xi + \beta_2 \xi^2 + 3 \beta_4 \xi^3 - 3 \beta_4 \xi^3 + \beta_3 \xi^3 + \beta_4 \xi^3 - \beta_4 \xi^3$$
+$$\beta_0 + \beta_1 \xi + \beta_2 \xi^2 + \beta_3 \xi^3$$
+
+## D
+
+$$f'(x) = b_1 + 2 c_1 x + 3 d_1 x^2$$
+$$f_1'(\xi) = \beta_1 + 2 \beta_2 \xi + 3 \beta_3 \xi^2$$
+
+$$f_2'(\xi) = \beta_1 + 3 \beta_4 \xi^2 + 2 (\beta_2 - 3 \beta_4 \xi) \xi + 3 (\beta_3 + \beta_4) \xi^2$$
+
+$$\beta_1 + 3 \beta_4 \xi^2 + 2 \beta_2 \xi - 6 \beta_4 \xi^2 + 3 \beta_3 \xi^2 + 3 \beta_4 \xi^2$$
+
+$$ \beta_1 + 2 \beta_2 \xi + 3 \beta_3 \xi^2 + 3 \beta_4 \xi^2 + 3 \beta_4 \xi^2 - 6 \beta_4 \xi^2 $$
+
+$$ \beta_1 + 2 \beta_2 \xi + 3 \beta_3 \xi^2$$
+
+## E
+
+$$f''(x) = 2 c_1 + 6 d_1 x$$
+
+$$f_1''(\xi) = 2 \beta_2 + 6 \beta_3 \xi$$
+
+$$f_2''(\xi) = 2 (\beta_2 - 3 \beta_4 \xi) + 6 (\beta_3 + \beta_4) \xi$$
+
+$$2 \beta_2 + 6 \beta_3 \xi$$
+
+# 2.
+## A
+```{r 2a}
 data(Boston)
-View(Boston)
-#A
-#polynomail reg
+attach(Boston)
+#polynomial reg
 p2_m1<-lm(nox~poly(dis ,3) ,data=Boston)
 #coef(summary (fit))
 summary(p2_m1)
@@ -25,20 +81,33 @@ plot(Boston$dis ,Boston$nox, xlim=dis_lims ,cex =.5,col=" darkgrey ")
 title(" Degree -3 Polynomial ",outer=T)
 lines(dis_grid ,dis_preds$fit ,lwd=2,col="blue")
 matlines (dis_grid ,dis_se.bands ,lwd=1, col=" blue",lty=3)
+```
 
-#B
+## B
+```{r 2b}
 #make a loop to fit all the polys
 testlist<-list(NA)
 for(i in 1:10){
   testlist[[i]]<-lm(nox~poly(dis ,i) ,data=Boston)
 }
 
+#actual plotting code
+for(i in 1:10){
+  dis_preds=predict (testlist[[i]] ,newdata =list(dis=dis_grid),se=TRUE)
+  dis_se.bands=cbind(dis_preds$fit +2* dis_preds$se.fit ,dis_preds$fit -2* dis_preds$se.fit)
+  plot(Boston$dis ,Boston$nox, xlim=dis_lims ,cex =.5,col=" darkgrey ")
+  lines(dis_grid ,dis_preds$fit ,lwd=2,col="blue")
+  title(paste(i, "Degree Polynomial "))
+  matlines (dis_grid ,dis_se.bands ,lwd=1, col=" blue",lty=3)
+}
 #print the deviance (same as RSS for linear models) on all polynomial fits
 for(i in 1:10){
   print(deviance(testlist[[i]]))
 }
+```
 
-#C
+## C
+```{r 2c}
 #setting up for CV
 train=sample (506,253)
 test=!train
@@ -48,16 +117,14 @@ for(i in 1:10){
   testlist[[i]]<-lm(nox~poly(dis ,i) ,data=Boston, subset=train)
 }
 
-#test w/ p2_m1
 for(i in 1:10){
 print(mean((Boston$nox-predict(testlist[[i]],Boston))[-train ]^2))
 }
-#cross validation w/ test /training set chooses 3rd polynomial
+```
+Cross validation using an randomly sampled, equivalent sized training and test set indicated that the 3rd polynomial model has the lowest MSE. Thus, 3 degrees is our optimal degree for the polynomial.
 
-#D
-#those are my knot values 
-#make a loop to fit all the splines w/ different df
-
+## D
+```{r 2d}
 testlist<-list(NA)
 for(i in 3:6){
   testlist[[i]]<-lm(nox~bs(dis ,df = i) ,data=Boston, subset=train)
@@ -66,8 +133,7 @@ for(i in 3:6){
 for(i in 3:6){
   print(mean((Boston$nox-predict(testlist[[i]],Boston))[-train ]^2))
 }
-#looks like our 3df model is best
-#RSS is 0.003891
+
 #code to plot, first make predictions from our range of data
 dis_lims =range(Boston$dis)
 dis_grid=seq(from=dis_lims [1],to=dis_lims [2])
@@ -75,11 +141,15 @@ dis_preds=predict (testlist[[3]] ,newdata =list(dis=dis_grid),se=TRUE)
 dis_se.bands=cbind(dis_preds$fit +2* dis_preds$se.fit ,dis_preds$fit -2* dis_preds$se.fit)
 #actual plotting code
 plot(Boston$dis ,Boston$nox, xlim=dis_lims ,cex =.5,col=" darkgrey ")
-title(" 3 degree freedom  ",outer=T)
+title("3 degree freedom")
 lines(dis_grid ,dis_preds$fit ,lwd=2,col="blue")
 matlines (dis_grid ,dis_se.bands ,lwd=1, col=" blue",lty=3)
 
-#E
+```
+The best model has 3 degrees of freedom. RSS is 0.003891.
+
+## E
+```{r 2e}
 testlist<-list(NA)
 for(i in 3:6){
   testlist[[i]]<-lm(nox~ns(dis ,df = i) ,data=Boston, subset=train)
@@ -88,20 +158,22 @@ for(i in 3:6){
 for(i in 3:6){
   print(mean((Boston$nox-predict(testlist[[i]],Boston))[-train ]^2))
 }
-#4th df model best
-#rss = 0.003822
+#5th df model best
 #code to plot, first make predictions from our range of data
 dis_lims =range(Boston$dis)
 dis_grid=seq(from=dis_lims [1],to=dis_lims [2])
-dis_preds=predict (testlist[[4]] ,newdata =list(dis=dis_grid),se=TRUE)
+dis_preds=predict (testlist[[5]] ,newdata =list(dis=dis_grid),se=TRUE)
 dis_se.bands=cbind(dis_preds$fit +2* dis_preds$se.fit ,dis_preds$fit -2* dis_preds$se.fit)
 #actual plotting code
 plot(Boston$dis ,Boston$nox, xlim=dis_lims ,cex =.5,col=" darkgrey ")
-title(" 4 degree freedom  ",outer=T)
+title(" 4 degree freedom  ")
 lines(dis_grid ,dis_preds$fit ,lwd=2,col="blue")
 matlines (dis_grid ,dis_se.bands ,lwd=1, col=" blue",lty=3)
+```
+5 degree of freedom model is best, the RSS is 0.00385.
 
-#F
+## F
+```{r 2f}
 #fitting a smoothing spline using the smooth.spline fxn
 plot(x=Boston$dis ,y=Boston$nox ,xlim=dis_lims ,cex =.5,col="darkgrey")
 title("Smoothing Spline ")
@@ -111,42 +183,13 @@ fit2$df
 lines(fit ,col="red",lwd =2)
 lines(fit2 ,col="blue",lwd=2)
 legend ("topright",legend=c("10 DF" ,"15.42 DF"),col=c("red","blue"),lty=1,lwd=2, cex =.8)
-#we can specify DF in smooth.spline, but we can also let CV auto determine it w/ CV = TRUE command
-length(fit$x)
 fit2$lambda
-#what does this weighting mean??
-fit2$pen.crit
 sum((fit2$y - Boston$nox[1:412])^2)
-#??? lets loook @ this later
-#toy example from stackexchange
-x = seq(1:18)
-y = c(1:3,5,4,7:3,2*(2:5),rep(10,4))
-splineres <- function(spar){
-  res <- rep(0, length(x))
-  for (i in 1:length(x)){
-    mod <- smooth.spline(x[-i], y[-i], spar = spar)
-    res[i] <- predict(mod, x[i])$y - y[i]
-  }
-  return(sum(res^2))
-}
+```
+Df chosen was approximately 15.4. Lambda is 9.0295e-05, RSS is 11.819.
 
-spars <- seq(0, 1.5, by = 0.001)
-ss <- rep(0, length(spars))
-for (i in 1:length(spars)){
-  ss[i] <- splineres(spars[i])
-}
-plot(spars, ss, 'l', xlab = 'spar', ylab = 'Cross Validation Residual Sum of Squares' , main = 'CV RSS vs Spar')
-spars[which.min(ss)]
-R > spars[which.min(ss)]
-[1] 0.381
-## this code fits spar directly using spar fxn and cross validation?
-
-#G loess code
-#performing local regression w/ Loess fxn
-## code
-rangespan<-seq(from=0.1, to=5, length.out = 20)
-check<-list(NA)
-testlist<-list(NA)
+## G
+```{r 2g}
 #kfold code from wikle
 #modfied to just a plain test/train setup
 rangespan<-seq(from=0.1, to=5, length.out = 20)
@@ -161,30 +204,34 @@ which.min(check)
 
 rangespan[which.min(check)]
 
+```
+We chose the span by setting a training and testing set aside at random, then running cross validation on a grid search for values of span from .1 to 5. The span that resulted in the lowest SSE was chosen, which in this case was a span of 0.6157.
 
-##3
+# 3.
+
+```{r 3}
 load("lakes_DA3.Rdata")
 lakes<-lakes_DA3
 lakes$lsecchi<-log(lakes$secchi)
 lakes2<-lakes[,-c(4,25)]
 
 for(i in 1:23){
-plot(y=lakes$lsecchi, x=lakes2[,i], xlab=colnames(lakes2)[i])
+  plot(y=lakes$lsecchi, x=lakes2[,i], xlab=colnames(lakes2)[i])
 }
-  
-#chla, mean depth,tn,tp, mean annual temp,spring temp,summer temp,
-#fall temp, fall precip, iws_wetland
-#it looks like w/ these plots we only want to look @ these variables
-
-#univariate filter w/ our goal of interest
 vars <- c("chla","mean_depth", "tn", "tp", "mean_annual_temp", "mean_spring_temp", "mean_summer_temp",
           "mean_fall_temp", "mean_fall_precip", "iws_wetland")
 comb.vars <- expand.grid(vars, vars, stringsAsFactors = FALSE)
 comb.vars <- comb.vars[comb.vars[,1] != comb.vars[,2],]
 i.vars <- apply(comb.vars, 1, paste, collapse = "+")
-View(i.vars)
-#code to make 2 items combos of our 10 variables
-library(boot)
+var_list<-comb.vars[!duplicated(t(apply(comb.vars, 1, sort))), ]
+```
+The first step I took in determining our two variables for GAM was doing exploratory data analysis. I began this exploratory data analysis by starting by creating plots of all our variables against log(secchi). Looking at this, I began to shrink the decision space by eliminating all plotted variables that did not visually indicate that they seemed to be related to log(secchi). After this step, I was left with 10 variables: chla, mean depth, tn, tp, mean_annual_temp, mean_spring_temp, mean_summer_temp, mean_fall_temp, mean_fall_precip, and iws_wetland.
+
+The next step was to look at every two variable combination of those 10 variables (total 45 combinations), and use multiple different methods to see which could fit them best.
+
+## Logistic Regression
+Below is code and output for cross validation error on our logistic regression model.
+```{r 3LR}
 cv_error<-list(NA)
 modelfits<-list(NA)
 for(i in 1:length(i.vars)) {
@@ -192,22 +239,15 @@ for(i in 1:length(i.vars)) {
   modelfits[[i]] <- glm(as.formula(modelformula), family = "gaussian", data = lakes)
   cv_error[[i]]=cv.glm(lakes,modelfits[[i]] ,K=5)$delta[1]
 }
-cv_error
 which.min(cv_error)
-#.2861
+cv_error[8]
 best_model<-modelfits[[8]]
 summary(best_model)
+```
+## Regression Splines
+Below is our code and output for cross validation error on our regression splines.
 
-
-#now try to run the above loop using SPLINES???
-
-#lets fit bs splines
-library(splines)
-#CREATE two vectors of unique combos
-var_list<-comb.vars[!duplicated(t(apply(comb.vars, 1, sort))), ]
-
-#jesus this is some ugly code
-i<-1
+```{r 3RS, warning=FALSE}
 cv_error<-list(NA)
 modelfits<-list(NA)
 
@@ -216,16 +256,15 @@ for(i in 1:nrow(var_list)) {
   modelfits[[i]]<-glm(as.formula(modelformula), family = "gaussian",data=lakes)
   cv_error[[i]]<-cv.glm(lakes, modelfits[[i]], K=5)$delta[1]
 }
-cv_error
 which.min(cv_error)
-
-#.179335
+cv_error[18]
 best_model<-modelfits[[18]]
 summary(best_model)
+```
+## Natural Splines
+Below is our code and output for cross validation error on our natural splines.
 
-#fit using ns splines
-#jesus this is some ugly code
-i<-1
+```{r 3ns, warning=FALSE}
 cv_error<-list(NA)
 modelfits<-list(NA)
 
@@ -234,25 +273,15 @@ for(i in 1:nrow(var_list)) {
   modelfits[[i]]<-glm(as.formula(modelformula), family = "gaussian",data=lakes)
   cv_error[[i]]<-cv.glm(lakes, modelfits[[i]], K=5)$delta[1]
 }
-cv_error
 which.min(cv_error)
-#.1359
-best_model<-modelfits[[18]]
+cv_error[3]
+best_model<-modelfits[[3]]
 summary(best_model)
+```
+## Smoothing Splines
+Below is our code and output for smoothing splines
 
-#test w/ wikle
-i<-1
-cv_error<-list(NA)
-modelfits<-list(NA)
-
-for(i in 1:nrow(var_list)) {
-  modelfits[[i]]<-glm(lsecchi~ ns(var_list[i,1], df = 3) + ns(var_list[i,2], df=3), family = "gaussian",data=lakes)
-  cv_error[[i]]<-cv.glm(lakes, modelfits[[i]], K=5)$delta[1]
-}
-# doesn't work, can't directly call the item off var_list?
-
-#time to go wild with gam? using the gamclass fxn as a stand in for cross validation
-library(gam)
+```{r 3ss}
 errorlist<-list(NA)
 bestmodel<-list(NA)
 i=1
@@ -277,15 +306,11 @@ for(k in 1:K){
 }
 bestmodel
 moderror
-#is this code even ... good? YES~!
-#0.159,0.1357,0.1667
-#2 of our methods agreed that our best model was the 2 var model 2 tn and CHLA, compare our smooth spline vs our bs
+```
+After looking at our two variable combinations using multiple methods, it seemed like the variables that appeared multiple times as the 'best' model was mean fall depth and mean temp. The best 5-fold cross validation error that we were able to achieve was 0.12926, which seemed superior to our error on HW 3.
 
-#our best model was fitting using natural splines, model 18 mean fall temp and depth
-
-#4
-#tried two different 'stabs' at methods here
-
+# 4.
+```{r 4}
 levee<-read.delim("mmr_levee.txt", sep = "", header = FALSE)
 colnames(levee)<-c("failure","year","river_mile","sediment","borrow_pit","meander_loc","channel_width","flood_width","constriction_fact","land_type","vege_buffer","channel_sinu","dredge_intense","bank_revetment")
 levee$failure<-as.factor(levee$failure)
@@ -296,22 +321,20 @@ levee$borrow_pit<-as.factor(levee$borrow_pit)
 for(i in 2:14){
   plot(y=levee$failure, x=levee[,i], xlab=colnames(levee)[i])
 }
-#checking overlaid plots
-plot(y=levee$failure, x=jitter(levee$bank_revetment))
-
-levels(levee$failure)
-#relvaent lvls?
-#land type matters, meander location
-#looking at the plot only these two things matter
-plot(y=levee$land_type, x=levee$meander_loc)
-#perhaps slight correlation b/w these factors but not serious
 train=sample(70,35)
 levee_test<-levee[-train,]
-#consider collapsing categories (collapse 1-3 and 2-4 in meander
-#collapse 1 vs 2-3-4 in land_type)
+```
 
-#fit using glm
-library(boot)
+
+The first step I took in determining our variables for GAM was doing exploratory data analysis. I began this exploratory data analysis by starting by creating plots of all our variables against levee failure. Looking at this, I began to shrink the decision space by eliminating all plotted variables that did not visually indicate that they seemed to be related to levee failure. After this step, I was left with 2 variables, land type and meander location.
+
+Since this was a classification problem, I wanted to see this two variable gam using logistic regression, lda, and qda.
+
+## GLM
+
+Below is the model summary and confusion matrix/error rate for our GLM model on these two variables.
+
+```{r 4glm1}
 cost <- function(r, pi = 0) mean(abs(r-pi) > 0.5)
 modelfits<- glm(failure ~ meander_loc + land_type, family = "binomial", data = levee, subset=train)
 glm.probs=predict(modelfits,newdata=levee_test,type="response")
@@ -321,47 +344,35 @@ glm.pred[glm.probs >.5]=1
 table(glm.pred,levee_test$failure)
 mean(glm.pred==levee_test$failure)
 summary(modelfits)
-library(lme4)
-BIC(modelfits)
-#fit using splines
-library(splines)
-modelfits<- glm(failure ~ bs(meander_loc, df=3) + bs(land_type, df=3), family = "binomial", data = levee)
-cv_error=cv.glm(levee,modelfits,K=5, cost=cost)$delta[1]
-cv_error
-# unsure if this is valid
+```
+## LDA
 
-#prep for LDA
-library(MASS)
-
+Below is the model summary and confusion matrix/error rate for our QDA model on these two variables.
+```{r 4qda1}
 lda.fit<-lda(failure~meander_loc + land_type, data = levee, subset = train)
 
 lda.pred=predict(lda.fit , levee_test, type = "response")
 lda.class=lda.pred$class
 table(lda.class ,levee_test$failure)
 mean(lda.class==levee_test$failure)
+```
+Our LDA and GLM analysis had the same confusion matrix! Additionally, attempting to fit our QDA, our model was unable to run, thus I examined if there were other methods that would provide a better choice for variable
 
-#for QDA
-#cant fit w/ anything other than just meander_loc
-qda.fit<-qda(failure~meander_loc, data = levee, subset = train)
-qda.pred=predict(qda.fit , levee_test, type = "response")
-qda.class=qda.pred$class
-table(qda.class ,levee_test$failure)
-mean(qda.class==levee_test$failure)
+## Variable Selection Part 2
+I then decided to use best subset selection with BIC as the criterion to find if I had missed something important that I had not considered.
 
-#lets try fwd stepwise
-library(leaps)
-regfit.bwd=regsubsets(failure~.,data=levee, nvmax=13,method ="backward")
-summary(regfit.bwd)
-regfit.fwd=regsubsets(failure~.,data=levee, nvmax=13,method ="forward")
-summary(regfit.fwd)
-
+```{r 4 vs2}
 regfit.full=regsubsets(failure~.,data=levee, nvmax=13)
 reg.summary<-summary(regfit.full)
-reg.summary$rsq
-reg.summary$adjr2
+
 reg.summary$bic
-#7 variable model looking at best subset reg
-#just sediment has best BIC
+```
+The best subset regression using BIC as the criteria actually indicated that a 1 variable model would be superior, specifically a model using Sediment as it's only predictor.
+
+Thus, I wished to see if the previous methods (GLM, LDA, QDA) would provide a better error rate with sediment than the other two variable model.
+
+## Logistic Reg 2
+```{r 4 lr2}
 cost <- function(r, pi = 0) mean(abs(r-pi) > 0.5)
 modelfits<- glm(failure ~ sediment, family = "binomial", data = levee, subset=train)
 glm.probs=predict(modelfits,newdata=levee_test,type="response")
@@ -369,17 +380,23 @@ glm.pred=rep(0 ,35)
 glm.pred[glm.probs >.5]=1
 table(glm.pred,levee_test$failure)
 mean(glm.pred==levee_test$failure)
-#lda w/ sed
-library(MASS)
+
+```
+
+## LDA 2
+```{r 4 lda2}
 lda.fit<-lda(failure~ sediment, data = levee, subset = train)
 lda.pred=predict(lda.fit , levee_test, type = "response")
 lda.class=lda.pred$class
 table(lda.class ,levee_test$failure)
 mean(lda.class==levee_test$failure)
-
-#qda w/ sed
+```
+## QDA 2
+```{r 4 qda2}
 qda.fit<-qda(failure~sediment, data = levee, subset = train)
 qda.pred=predict(qda.fit , levee_test, type = "response")
 qda.class=qda.pred$class
 table(qda.class ,levee_test$failure)
 mean(qda.class==levee_test$failure)
+```
+Looking at our confusion matrix results, it seems like our highest success rate was using the 2 variable model consisting of land type and meander location. Sadly, a 1 variable model using sediment did not outperform the 2 variable model, looking at our training vs testing cross validation method.
