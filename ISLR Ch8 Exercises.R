@@ -123,7 +123,6 @@ importance(rf.boston)
 #we can plot these using this code
 varImpPlot(rf.boston)
 
-
 #boosting!
 install.packages("gbm")
 library(gbm)
