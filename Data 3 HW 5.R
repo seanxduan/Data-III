@@ -225,6 +225,7 @@ gridExtra::grid.arrange(p1, p2, ncol = 2)
 yhat.boost<-list(NA)
 fish_boost<-list(NA)
 
+
 testn<-seq(from=300, to=3000, length.out = 10)
 for (i in 1:10){
   fish_boost[[i]]=gbm(LSH7class~.,data=fish[training.set,], distribution="gaussian",n.trees=testn[[i]], interaction.depth=1)
@@ -234,3 +235,24 @@ for (i in 1:10){
 class_err
 which.min(class_err)
 #can't get boosting to work?
+
+#test
+yhat.boost<-list(NA)
+fish_boost<-list(NA)
+class_err<-list(NA)
+fish$bern<-fish$LSH7class
+levels(fish$bern)<-c(0,1)
+fish$bern
+fish$bern<-as.numeric(fish$bern)-1
+testn<-seq(from=300, to=3000, length.out = 10)
+for (i in 1:10){
+  i=1
+  boost=gbm(bern~.-LSH7class,data=fish[training.set,], distribution="bernoulli",n.trees=testn[[i]], interaction.depth=1)
+  yhat.boost[[i]]=predict(boost ,newdata =fish[-training.set ,],n.trees=testn[[i]])
+  class_err[[i]]<-(1-mean(yhat.boost[[i]]==LSH7class.test))
+}
+class_err
+which.min(class_err)
+summary(boost)
+yhat.boost
+#do 5fold cv on training set for sel of which is best, then actually compare on test set
