@@ -1,0 +1,375 @@
+---
+title: "Data 3 HW 5"
+author: "Sean Duan"
+date: "10/8/2020"
+output: pdf_document
+always_allow_html: true
+---
+
+```{r setup, include=FALSE}
+library(tree)
+library(ISLR)
+library(randomForest)
+library(gbm)
+library(earth)
+set.seed(1)
+```
+
+# 1.
+## A
+```{r 1a}
+train = sample (1:nrow(Carseats), nrow(Carseats)/2)
+attach(Carseats)
+data(Carseats)
+#fitting a regression tree
+carseat_t1=tree(Sales~.,Carseats , subset=train)
+summary(carseat_t1)
+#only 6 vars are used, shelveloc,price,age,advertising, comprice,and us
+#SSE is 2.16
+plot(carseat_t1)
+text(carseat_t1, pretty=0)
+#get test/train mse
+Carseats_test=Carseats [-train ,"Sales"]
+yhat=predict(carseat_t1,newdata=Carseats[-train,])
+plot(yhat ,Carseats_test)
+abline (0,1)
+mean((yhat -Carseats_test)^2)
+#MSE is 4.922
+```
+Looking at our tree, it seems that the most important variables are shelf location and price, as evinced by which elements are the variables used as split criteria in our tree (Shelveloc, price, age, advertising, compprice, US). The test MSE we obtain is 4.922.
+
+## B
+```{r 1b}
+#pruning
+cv_carseat_t1=cv.tree(carseat_t1)
+plot(cv_carseat_t1$size ,cv_carseat_t1$dev ,type="b")
+#no point in pruning our tree, although getting it to 5 wouldn't be bad if we wanted to simplify it
+#lets try w/ prune @ 6
+carseat_prune<-prune.tree(carseat_t1, best =6)
+
+yhat=predict(carseat_prune,newdata=Carseats[-train,])
+plot(yhat ,Carseats_test)
+abline (0,1)
+mean((yhat -Carseats_test)^2)
+#worse MSE 5.318
+```
+The optimal level of tree complexity is the full size tree with 18 terminal nodes. Pruning the tree does not improve test MSE, as evinced when we pruned the tree to a 6 node version. Our test MSE there was 5.318, which was noticably worse.
+## C
+```{r 1c}
+#lets do bagging!
+carseat_bag=randomForest(Sales~.,data=Carseats , subset=train ,mtry=10,importance =TRUE)
+carseat_bag
+#checking test MSE
+yhat.bag = predict (carseat_bag , newdata=Carseats[-train ,])
+plot(yhat.bag , Carseats_test)
+abline (0,1)
+mean((yhat.bag -Carseats_test)^2)
+#test MSE is 2.622! even bestter
+#we can check importance of each variable by using the importance() fxn
+importance(carseat_bag)
+#we can plot these using this code
+varImpPlot(carseat_bag)
+#price and shelveloc most important, comp price not bad either
+
+```
+The test MSE we obtain with bagging is 2.622, which is the best we have had thus far! The most important variables seem to be price, shelf location, and comp price.
+
+## D
+```{r 1d}
+##D
+#boosting!
+set.seed(1)
+carseat_boost=gbm(Sales~.,data=Carseats[train ,], distribution="gaussian",n.trees=5000, interaction.depth=4)
+#choose gaussian b/c i want sq err loss, not anything else
+yhat.boost=predict (carseat_boost ,newdata =Carseats[-train ,],n.trees=5000)
+mean((yhat.boost - Carseats_test)^2)
+#2.44 mse
+#code for our own k-fold cv
+car_train<-Carseats[train,]
+K=5
+folds = sample(1:K,nrow(car_train),replace=T)
+modelfits<-list(NA)
+errorlist<-list(NA)
+bestmodel<-list(NA)
+moderror<-list(NA)
+yhat.boost<-list(NA)
+carseat_boost<-list(NA)
+testn<-seq(from=100, to=10000, length.out = 10)
+test_mse<-list(NA)
+
+for(k in 1:K){
+  CV.train = car_train[folds != k,]
+  CV.test = car_train[folds == k,]
+  CV.ts_y = CV.test$Sales
+  for (i in 1:10){
+    carseat_boost[[i]]=gbm(Sales~.,data=CV.train, distribution="gaussian",n.trees=testn[[i]], interaction.depth=1)
+    yhat.boost[[i]]=predict(carseat_boost[[i]] ,newdata =CV.test,n.trees=testn[[i]])
+    test_mse[[i]]<-mean((yhat.boost[[i]] - CV.ts_y)^2)
+  }
+  moderror[[k]]<-test_mse[[which.min(test_mse)]]
+  bestmodel[[k]]<-which.min(test_mse)}
+moderror
+bestmodel
+#ntrees here is 1200
+
+car_train<-Carseats[train,]
+K=5
+folds = sample(1:K,nrow(car_train),replace=T)
+modelfits<-list(NA)
+errorlist<-list(NA)
+bestmodel<-list(NA)
+moderror<-list(NA)
+yhat.boost<-list(NA)
+carseat_boost<-list(NA)
+testn<-seq(from=100, to=10000, length.out = 10)
+test_mse<-list(NA)
+
+for(k in 1:K){
+  CV.train = car_train[folds != k,]
+  CV.test = car_train[folds == k,]
+  CV.ts_y = CV.test$Sales
+  for (i in 1:10){
+    carseat_boost[[i]]=gbm(Sales~.,data=CV.train, distribution="gaussian",n.trees=testn[[i]], interaction.depth=2)
+    yhat.boost[[i]]=predict(carseat_boost[[i]] ,newdata =CV.test,n.trees=testn[[i]])
+    test_mse[[i]]<-mean((yhat.boost[[i]] - CV.ts_y)^2)
+  }
+  moderror[[k]]<-test_mse[[which.min(test_mse)]]
+  bestmodel[[k]]<-which.min(test_mse)}
+
+#ntrees here is 1200
+
+carseat_boost=gbm(Sales~.,data=Carseats[train,], distribution="gaussian",n.trees=1200, interaction.depth=1)
+yhat.boost=predict(carseat_boost,newdata =Carseats[-train,],n.trees=1200)
+mean((yhat.boost[[i]] - CV.ts_y)^2)
+
+#looking at the code, it seems like the best ntrees is 1200, which is guarding against overfitting w/ larger sizes 
+#tried to fit w/ a stump first, but could not get better results w/ a larger interaction depth.
+
+```
+The distribution we used was Gaussian, because we were looking at what we believed to be normally distributed continous data. We chose the values for n-tree and interaction depth by comparing several 5-fold cross validated models on our training data set. We then used our cross validated values and predicted test MSE using our hold-out data. Our test MSE was 9.2653. Ntrees was set to 1200, and we used a 'stump' for our interaction depth (depth = 1).
+
+## E
+```{r 1e}
+#Random Forest
+
+#we start w/ a loop to find the best m value!
+
+K=5
+folds = sample(1:K,nrow(car_train),replace=T)
+modelfits<-list(NA)
+errorlist<-list(NA)
+bestmodel<-list(NA)
+moderror<-list(NA)
+mvec<-seq(from=1, to=10)
+yhat.bag<-list(NA)
+carseat_rf<-list(NA)
+testn<-seq(from=100, to=10000, length.out = 10)
+test_mse<-list(NA)
+
+for(k in 1:K){
+  CV.train = car_train[folds != k,]
+  CV.test = car_train[folds == k,]
+  CV.ts_y = CV.test$Sales
+  for(i in 1:10){
+    carseat_rf[[i]]=randomForest(Sales~.,data=CV.train,mtry=mvec[i],importance =TRUE)
+    yhat.bag[[i]]<-predict(carseat_rf[[i]] , newdata=CV.test)
+    test_mse[[i]]<-mean((yhat.bag[[i]] -CV.ts_y)^2)
+    }
+  moderror[[k]]<-test_mse[[which.min(test_mse)]]
+  bestmodel[[k]]<-which.min(test_mse)}
+
+#setting m to 8 gets us the lowest cv MSE
+carseat_rf=randomForest(Sales~.,data=Carseats[train,],mtry=8,importance =TRUE)
+yhat.bag<-predict(carseat_rf , newdata=Carseats[-train,])
+test_mse<-mean((yhat.bag -Carseats$Sales[-train])^2)
+test_mse    
+
+importance(carseat_rf)
+varImpPlot(carseat_rf)
+
+```
+Test MSE was 2.6003. The variables that were the most important seemed to be price, shelvelocation, and compprice.We were able to obtain our lowest error through 5-fold cross validation when m was set to 8 on our training data. Other values of m were inferior to 8 with regards to obtaining the lowest error.
+
+## F
+```{r 1f}
+#mars!~
+#used tutorial from
+#http://uc-r.github.io/mars
+carseat_mars<-earth(Sales~.,data=Carseats, subset = train)
+summary(carseat_mars)
+print(carseat_mars)
+
+#model selection code for mars
+plot(carseat_mars, which=1)
+#mars models scale invariant
+
+#test mse code
+yhat=predict(carseat_mars,newdata=Carseats[-train,])
+mean((yhat -Carseats_test)^2)
+#1.17
+```
+I first followed a tutorial "http://uc-r.github.io/mars" as material on MARS was not covered in class or our text books. The R package I used was earth. I created our simple MARS model by using the earth function, prediction sales from all our variables, on our training data. Then I used that model to predict our outcomes from our testing set, and calculated the MSE. Test MSE was 1.17, the lowest out of all of our methods thus far.
+
+# 2
+
+```{r 2}
+load("fish_data3.RData")
+fish<-fish_data3
+fish$LSH7class = droplevels(fish$LSH7class)
+
+#split into test/training
+set.seed(1)
+training.set=sample(1:nrow(fish),400)
+fish.test=fish[-training.set,]
+LSH7class.test=fish.test[,12]
+#goal - lowest classif error (use pred to find that out)
+```
+
+## CART bagging
+
+```{r 2bagging}
+#find best CART bagging
+fish_bag=randomForest(LSH7class~.,data=fish , subset=training.set ,mtry=11,importance =TRUE)
+fish_bag
+#error rate 4.75
+#checking test MSE
+yhat.bag = predict (fish_bag , newdata=fish[-training.set ,])
+plot(yhat.bag , LSH7class.test)
+#importance of variables
+importance(fish_bag)
+varImpPlot(fish_bag)
+#secchi lake mean, area hectacres most important, hectacres are good for accuracy, not for node purity!
+
+table(yhat.bag,LSH7class.test)
+1-mean(yhat.bag==LSH7class.test)
+#3.86% class error!
+```
+
+Using bagging, we were able to get a 3.86% classification error.
+
+## Random Forest
+
+```{r 2rf}
+#Random Forest
+#we start w/ a loop to find the best m value!
+fish_train<-fish[training.set,]
+K=5
+folds = sample(1:K,nrow(fish_train),replace=T)
+bestmodel<-list(NA)
+moderror<-list(NA)
+test_mse<-list(NA)
+mvec<-seq(from=1, to=11)
+yhat.bag<-list(NA)
+fish_rf<-list(NA)
+class_err<-list(NA)
+
+for(k in 1:K){
+  CV.train = fish_train[folds != k,]
+  CV.test = fish_train[folds == k,]
+  CV.ts_y = CV.test$LSH7class
+ for(i in 1:11){
+  fish_rf[[i]]=randomForest(LSH7class~.,data=CV.train ,mtry=mvec[i],importance =TRUE)
+  yhat.bag[[i]]<-predict(fish_rf[[i]] , newdata=CV.test)
+  class_err[[i]]<-(1-mean(yhat.bag[[i]]==CV.ts_y))
+  }
+  moderror[[k]]<-class_err[[which.min(class_err)]]
+  bestmodel[[k]]<-which.min(class_err)}
+moderror
+bestmodel
+#setting m to 2 gets us the lowest class error
+#lets try ntree
+fish_train<-fish[training.set,]
+K=5
+folds = sample(1:K,nrow(fish_train),replace=T)
+bestmodel<-list(NA)
+moderror<-list(NA)
+test_mse<-list(NA)
+yhat.bag<-list(NA)
+fish_rf<-list(NA)
+class_err<-list(NA)
+testn<-seq(from=300, to=3000, length.out = 10)
+for(k in 1:K){
+  CV.train = fish_train[folds != k,]
+  CV.test = fish_train[folds == k,]
+  CV.ts_y = CV.test$LSH7class
+ for(i in 1:10){
+  fish_rf[[i]]=randomForest(LSH7class~.,data=CV.train ,mtry=2, ntree=testn[[i]], importance =TRUE)
+  yhat.bag[[i]]<-predict(fish_rf[[i]] , newdata=CV.test)
+  class_err[[i]]<-(1-mean(yhat.bag[[i]]==CV.ts_y))
+  }
+  moderror[[k]]<-class_err[[which.min(class_err)]]
+  bestmodel[[k]]<-which.min(class_err)}
+#best ntrees is 300 across all folds
+#test on our test data
+fish_rf=randomForest(LSH7class~.,data=fish[training.set,] ,mtry=2, ntree=300, importance =TRUE)
+yhat.bag<-predict(fish_rf , newdata=fish[-training.set,])
+1-mean(yhat.bag==LSH7class.test)
+#2.41% class err
+importance(fish_rf)
+varImpPlot(fish_rf)
+#secchi lake mean, area hectacres, mean gdd, max depth most important
+```
+## MARS
+
+```{r 3mars, warning=FALSE}
+#mars
+fish_mars<-earth(LSH7class~.,data=fish, subset = training.set)
+summary(fish_mars)
+print(fish_mars)
+
+#model selection code for mars
+plot(fish_mars, which=1)
+#mars models scale invariant
+
+#test err code
+yhat=predict(fish_mars,newdata=fish[-training.set,])
+mars.pred=rep("LargeEutrophic" ,207)
+mars.pred[yhat >.5]="LargeMesotrophic"
+table(mars.pred, LSH7class.test)
+1-mean(mars.pred==LSH7class.test)
+#3.86% error, not better than others
+#var importance code
+evimp(fish_mars)
+```
+## CART Boosting
+
+```{r 3boost, warning=FALSE}
+#best CART boosting
+
+#5fold cv for boosting
+fish.B=fish
+fish.B[,12]=rep(0,nrow(fish))
+fish.B[which(fish$LSH7class=="LargeEutrophic"),12]=1
+fish_train<-fish.B[training.set,]
+K=5
+folds = sample(1:K,nrow(fish_train),replace=T)
+bestmodel<-list(NA)
+moderror<-list(NA)
+test_mse<-list(NA)
+yhat.boost<-list(NA)
+fish_boost<-list(NA)
+class_err<-list(NA)
+testn<-seq(from=300, to=3000, length.out = 10)
+
+for(k in 1:K){
+  CV.train = fish_train[folds != k,]
+  CV.test = fish_train[folds == k,]
+  CV.ts_y = CV.test$LSH7class
+for (i in 1:10){
+  fish_boost[[i]]=gbm(LSH7class~.,data=CV.train, distribution="bernoulli",n.trees=testn[[i]], interaction.depth=1)
+  yhat.boost[[i]]=round(predict(fish_boost[[i]] ,newdata =CV.test,n.trees=testn[[i]], type = "response"),0)
+  class_err[[i]]<-(1-mean(yhat.boost[[i]]==CV.ts_y))
+  }
+  moderror[[k]]<-class_err[[which.min(class_err)]]
+  bestmodel[[k]]<-which.min(class_err)}
+moderror
+bestmodel
+
+#best ntrees is 300 across all folds
+#test on our test data
+fish_boost=gbm(LSH7class~.,data=fish.B[training.set,], distribution="bernoulli",n.trees=300, interaction.depth=1)
+yhat.boost=round(predict(fish_boost ,newdata =fish.B[-training.set,],n.trees=300, type = "response"),0)
+1-mean(yhat.boost==fish.B[-training.set,]$LSH7class)
+#test error was 3.38%
+```
+Out of all of our methods, Random Forest with m set to 2 and number of trees was set to 300. I chose these values for our parameters using 5-fold CV on our training data. Our classification error rate was 2.41% on our test data. The variables we found to be important were secchi lake mean, area hectacres, mean gdd, and max depth.

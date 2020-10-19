@@ -33,7 +33,7 @@ cv_carseat_t1=cv.tree(carseat_t1)
 plot(cv_carseat_t1$size ,cv_carseat_t1$dev ,type="b")
 #no point in pruning our tree, although getting it to 5 wouldn't be bad if we wanted to simplify it
 #lets try w/ prune @ 6
-carseat_prune<-prune.tree(carseat_t1, best =6)
+carseat_prune<-prune.tree(carseat_t1, best =5)
 
 yhat=predict(carseat_prune,newdata=Carseats[-train,])
 plot(yhat ,Carseats_test)
@@ -256,3 +256,39 @@ which.min(class_err)
 summary(boost)
 yhat.boost
 #do 5fold cv on training set for sel of which is best, then actually compare on test set
+#wikles code
+
+boost=gbm(LSH7class~.,data=fish.B[training.set,],distribution="bernoulli",
+          n.trees=n.trees[i],interaction.depth=1,shrinkage=shrink[s])
+
+
+boost.pred=round(predict(boost,newdata=fish.B[-training.set,],n.trees=n.trees[i],type="response"),0)
+
+#more code
+n.trees=c(500,1000,2000,3000,4000,5000)
+shrink=c(.001,.01,.1)
+boost.miss=matrix(ncol=6,nrow=3)
+fish.B=fish
+fish.B[,11]=rep(0,nrow(fish))
+fish.B[which(fish$LSH7class=="LargeEutrophic"),11]=1
+for(i in 1:6){
+  for(s in 1:3){
+    boost=gbm(LSH7class~.,data=fish.B[training.set,],distribution="bernoulli",
+              n.trees=n.trees[i],interaction.depth=1,shrinkage=shrink[s])
+    boost.pred=round(predict(boost,newdata=fish.B[-training.set,],n.trees=n.trees[i],type="response"),0)
+    boost.miss[s,i]=table(boost.pred,fish.B$LSH7class[-training.set])[[2]]+table(boost.pred,fish.B$LSH7class[-training.set])[[3]]
+  }
+}
+boost.miss
+load("fish_data3")
+fish=fish_data3
+set.seed(1)
+training.set=sample(1:nrow(fish),400)
+fish.test=fish[-training.set,]
+LSH7class.test=fish.test[,11]
+
+
+boost.pred=round(predict(boost,newdata=fish.B[-training.set,],n.trees=n.trees[i],type="response"),0)
+boost=gbm(LSH7class~.,data=fish.B[training.set,],distribution="bernoulli",
+          n.trees=n.trees[i],interaction.depth=1,shrinkage=shrink[s])
+
