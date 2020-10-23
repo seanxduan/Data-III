@@ -95,7 +95,7 @@ install.packages("randomForest")
 library(randomForest)
 set.seed(1)
 bag.boston= randomForest( medv~.,data=Boston , subset=train ,mtry=13,importance =TRUE)
-bag.boston
+ bag.boston
 
 #checking to see if this prediction works well using cv on train/test
 yhat.bag = predict (bag.boston , newdata=Boston[-train ,])

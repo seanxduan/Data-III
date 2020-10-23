@@ -1,0 +1,28 @@
+---
+title: "House Prices: Advanced Regression Techniques"
+subtitle: "Kaggle Compeition 1 for DA"
+author: "Sean Duan"
+date: "10/26/2020"
+output: pdf_document
+always_allow_html: true
+---
+
+```{r setup, include=FALSE}
+library(tree)
+library(ISLR)
+library(randomForest)
+library(gbm)
+library(earth)
+
+```
+
+# Introduction
+This problem is a relatively simple one, determining which combined aspects of a property determine it's value on the open market. Our dataset is composed of residential home information from Ames, Iowa. 
+
+# Preliminary Data Analysis
+The first thing I did was decide what elements were important in order to have 'clean' data to work from. I made the decision to drop columns with NA values from the dataset, as well as removing any columns with perfect collinearity with other predictors in the dataset. 
+
+After getting to a 'clean' data format, the next step was to create a subset selection.
+
+# Plots
+To help guide my intution with regards as to which elements were related to house pricing, I did a simple plot that compared house prices to our various predictors. The variables that stood out to me as being highly correlated, and worth paying attention to down the road were ###
