@@ -1,6 +1,6 @@
 houses<-read.csv("house-prices-advanced-regression-techniques/train.csv")
 houses_test<-read.csv("house-prices-advanced-regression-techniques/test.csv")
-
+houses$MSSubClass<-as.factor(houses$MSSubClass)
 #lets see how good our model is, looking at best subset r
 library(leaps)
 regfit.full=regsubsets(SalePrice~.,data=houses, nvmax=20)
@@ -36,10 +36,58 @@ houses_clean<-subset(houses_nna, select=-c(X1stFlrSF, X2ndFlrSF, LowQualFinSF, B
 #ok, now that we've cleand data, lets see a lm again
 lm2<-lm(SalePrice~., data=houses_clean)
 summary(lm2)
-vif(lm2)
+L<-vif(lm2)
+?vif
 #terms to look @ kicking out
 #sale type, sale condition, gr liv area, foundation, exterior 1st, exter qual, bldgtype, housestyle, neighborhood, 
 #mssubclass, mszoning
+
+#plot to look @ shit
+for(i in 2:54){
+  plot(y=houses_clean$SalePrice, x=houses_clean[,i], xlab=colnames(houses_clean)[i])
+}
+#consider feature engineering (collapsing variables mostly?)
+#which and where do i choose to do this
+#collapse then not collapse, compare against each other.
+
+
+#yrsold doesn't matter?
+
+
+#here we write a cv loop to eliminate tings
+which(L[,1] > 10)
+max_vif<-100000
+vars_remove<-c(NA)
+while(max_vif > 10){
+  if(sum(!is.na(vars_remove))==0){ mod<-lm(SalePrice~.,data=houses_clean)
+  }else{mod<-lm(SalePrice~.,data=houses_clean[,-vars_remove])}
+  L<-vif(mod)
+  n<-which.max(L[,1])
+  if(L[n,1]>10){vars_remove<-c(vars_remove,names(L[n,1]))}
+  max_vif<-L[n,1]
+  print(max_vif)
+}
+#code doesn't work, ethan is a scrub
+#perhaps ignore multicollinarity
+#code for our own k-fold cv
+K=5
+folds = sample(1:K,nrow(houses_clean),replace=T)
+houses_lm<-list(NA)
+pred_lm<-list(NA)
+test_mse<-list(NA)
+for(k in 1:K){
+  
+  CV.train = houses_clean[folds != k,]
+  CV.test = houses_clean[folds == k,]
+  CV.ts_y = CV.test$SalePrice
+  houses_lm[[k]]=lm(SalePrice~.,data=CV.train)
+  pred_lm[[k]]=predict(object=houses_lm[[k]], newdata=CV.test)
+  test_mse[[k]]<-mean((pred_lm[[k]] - CV.ts_y)^2)
+}
+
+houses_clean %>% group_by(Condition2) %>% summarise(Prop=n()/nrow(houses_clean))
+
+
 
 
 
@@ -70,3 +118,6 @@ importance(tr2)
 varImpPlot(tr2)
 #overall qual best for node purity
 #mse red is gr liv area, neighborhood, overall qual, totalbsmt SF
+
+
+#boosting and RF, lm, but also genearllized Lm (gamma distri), perhaps a MLM?
