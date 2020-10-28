@@ -157,6 +157,24 @@ houses_clean_tst <- houses_clean_tst %>% mutate_if(is.character,as.factor)
 for(i in 1:53){
   plot(y=houses_clean$SalePrice, x=houses_clean[,i], xlab=colnames(houses_clean)[i])
 }
+
+for (i  in 1:52) {
+  print(colnames(houses_clean)[i])
+  print(table(houses_clean[,i]))
+  
+}
+#quick loop to see #'s of all tables
+for (i  in 1:52) {
+  print(colnames(houses_clean_tst)[i])
+  print(table(houses_clean_tst[,i]))
+  
+}
+
+#to check and see our shit
+for(i in 1:52){
+  print(colnames(houses_clean_tst)[i])
+  print(levels(houses_clean[,i])==levels(houses_clean_tst[,i]))
+}
 ```
 
 # Linear Model
