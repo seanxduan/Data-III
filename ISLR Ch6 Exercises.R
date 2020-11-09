@@ -120,8 +120,8 @@ install.packages("glmnet")
 library(glmnet)
 
 #Ridge Reg
-x=model.matrix(Purchase~.,OJ )[,-1]
-y=OJ$Purchase
+x=model.matrix(Salary~.,Hitters )[,-1]
+y=Hitters$Salary
 grid=10^seq(10,-2, length =100)
 length(grid)
 

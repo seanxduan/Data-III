@@ -1,17 +1,29 @@
-#Data 3 HW 6
+---
+title: "Data 3 HW 6"
+author: "Sean Duan"
+date: "11/9/2020"
+output: pdf_document
+always_allow_html: true
+---
+
+```{r setup, include=FALSE}
+library(glmnet)
+library(pROC)
 library(ISLR)
 library(e1071)
 library(ROCR)
-
 attach(OJ)
 data(OJ)
-View(OJ)
-
 #figure out which category (minute maid or citrus hill) based on vars in our data
 #split training/test 
 set.seed(1)
 train=sample(1070,800)
 
+```
+
+# 1.
+## A
+```{r 1a}
 #A
 tune.out=tune(svm ,Purchase~.,data=OJ[train,] ,kernel ="linear", ranges=list(cost=c(0.01, 0.05, 0.1, 0.5, 1, 5, 10)))
 summary(tune.out)
@@ -29,7 +41,11 @@ ypred=predict(bestmod ,OJ[-train,])
 table(predict=ypred , truth=OJ[-train,]$Purchase )
 1-mean(ypred==OJ[-train,]$Purchase)
 # wow even lower test err, 16.3%!
+```
+Looking at our support vector classifier, we were able to find a training error of 16.5%, and a test error of 16.3%. Our best values for the cost parameter was 0.1.
 
+## B
+```{r 1b}
 #B
 tune.out=tune(svm ,Purchase~.,data=OJ[train,] ,kernel ="polynomial", degree=2, ranges=list(cost=c(0.01, 0.05, 0.1, 0.5, 1, 5, 10)))
 summary(tune.out)
@@ -47,9 +63,12 @@ ypred=predict(bestmod ,OJ[-train,])
 table(predict=ypred , truth=OJ[-train,]$Purchase )
 1-mean(ypred==OJ[-train,]$Purchase)
 #18.9% err
+```
 
-#maybe add plots?
+Looking at our support vector machine, we were able to find a training error of 15%, and a test error of 18.9%. Our best values for the cost parameter was 10.
 
+## C
+```{r 1c}
 #C
 tune.out=tune(svm ,Purchase~.,data=OJ[train,] ,kernel ="radial",
               ranges=list(cost=c(0.01, 0.05, 0.1, 0.5, 1, 5, 10),
@@ -70,7 +89,11 @@ ypred=predict(bestmod ,OJ[-train,])
 table(predict=ypred , truth=OJ[-train,]$Purchase )
 1-mean(ypred==OJ[-train,]$Purchase)
 #18.1% err
+```
+Looking at our support vector machine, we were able to find a training error of 17.4%, and a test error of 18.1%. Our best values for the cost parameter was 5, and 0.001 for the gamma parameter.
 
+## D
+```{r 1d}
 #D
 tune.out=tune(svm ,Purchase~.,data=OJ[train,] ,kernel ="sigmoid",
               ranges=list(cost=c(0.01, 0.05, 0.1, 0.5, 1, 5, 10),
@@ -91,7 +114,11 @@ ypred=predict(bestmod ,OJ[-train,])
 table(predict=ypred , truth=OJ[-train,]$Purchase )
 1-mean(ypred==OJ[-train,]$Purchase)
 #17.8% err
+```
+Looking at our support vector machine, we were able to find a training error of 17.5%, and a test error of 17.8%. Our best values for the cost parameter was 10, and 0.001 for the gamma parameter.
 
+## E
+```{r 1e}
 #E
 glm1<-glm(Purchase~., data = OJ[train,], family = binomial)
 summary(glm1)
@@ -111,14 +138,18 @@ glm.pred[glm.probs >.5]="MM"
 table(predict=glm.pred , truth=OJ[-train,]$Purchase )
 1-mean(glm.pred==OJ[-train,]$Purchase)
 #15.6% err
+```
+Looking at our logistic regression, we were able to find a training error of 17.3%, and a test error of 15.6%.
 
+## F - Training Data
+```{r 1fa}
 #F
 rocplot =function (pred , truth , ...){
   predob = prediction (pred , truth)
   perf = performance (predob , "tpr", "fpr")
   plot(perf ,...)}
 
-par(mfrow=c(1,4))
+par(mfrow=c(1,2))
 
 ## ROC for training data
 #m1
@@ -157,9 +188,13 @@ perf=performance(predob, "tpr","fpr")
 plot(perf, add = T, col = "green")
 
 #m5
-library(pROC)
 test_prob = predict(glm1, newdata = OJ[train,], type = "response")
 test_roc = roc(OJ[train,]$Purchase ~ test_prob, plot = TRUE, print.auc = TRUE)
+```
+
+## F - Testing Data
+```{r 1fb}
+par(mfrow=c(1,2))
 
 
 ##ROC for test data
@@ -195,17 +230,18 @@ perf=performance(predob, "tpr","fpr")
 plot(perf, add = T, col = "green")
 
 #m5
-library(pROC)
 test_prob = predict(glm1, newdata = OJ[-train,], type = "response")
 test_roc = roc(OJ[-train,]$Purchase ~ test_prob, plot = TRUE, print.auc = TRUE)
+```
 
-#looking at AUC it seems like sigmoid kernal or logistic work best for the test data
+Looking at our ROC curves, it seems like the sigmoid kernal or logistic regression work best looking at AUC.
 
+## G 
+```{r 1g}
 #G
-library(glmnet)
 ###ridge regression
-x=model.matrix(Salary~.,Hitters )[,-1]
-y=Hitters$Salary
+x=model.matrix(Purchase~.,OJ)[,-1]
+y=OJ$Purchase
 grid=10^seq(10,-2, length =100)
 length(grid)
 ridge.mod=glmnet (x,y,alpha=0, lambda=grid, family = "binomial")
@@ -214,7 +250,6 @@ set.seed(1)
 cv.out=cv.glmnet(x[train ,],y[ train],alpha=0, family = "binomial")
 plot(cv.out)
 bestlam =cv.out$lambda.min
-
 #bestlam is 0.0311
 #training data
 ridge.mod=glmnet(x[train ,],y[ train],alpha=0, lambda=0.0311,thresh =1e-12, family = "binomial")
@@ -237,7 +272,6 @@ set.seed(1)
 cv.out=cv.glmnet(x[train ,],y[ train],alpha=1, family = "binomial")
 plot(cv.out)
 bestlam =cv.out$lambda.min
-
 #bestlam is 0.00392
 #training data
 ridge.mod=glmnet(x[train ,],y[ train],alpha=1, lambda=0.00392,thresh =1e-12, family = "binomial")
@@ -253,3 +287,10 @@ ridge.pred2[ridge.pred >0]="MM"
 table(predict=ridge.pred2 , truth=OJ[-train,]$Purchase )
 1-mean(ridge.pred2==OJ[-train,]$Purchase)
 #17% err w/ RR
+```
+
+Our ridge regression method has a training error rate of 17.2%, and a test error rate of 17.4%
+
+Our LASSO method has a training error rate of 16.6%, and a test error rate of 17%.
+
+Compared to the other methods we have looked at in this homework, we can conclude that RR and LASSO are comparable to our Support Vector Machines, Support Vector Classifiers, and our standard Logistic Regression Methods.
