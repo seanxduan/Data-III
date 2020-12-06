@@ -1,6 +1,5 @@
 #ISLR ch8 exercises#
 library(ISLR)
-install.packages("tree")
 library(tree)
 attach(Carseats)
 data(Carseats)

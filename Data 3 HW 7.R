@@ -101,3 +101,20 @@ km_plot
 
 ## 4
 library(kernlab)
+#do data preprocessing (split train/test, and feature scaling)
+shoes_4<-scale(shoes)
+shoes_4[is.na(shoes_4)] <- 0
+
+#really reduce the # size so we have a smaller set!
+
+
+train=sample(1:nrow(shoes_4), 9000)
+class(shoes_4)
+shoes_4<-as.data.frame(shoes_4)
+shoes_k = kpca(~., data = shoes_4[train,], kernel = 'rbfdot', features = 4)
+
+training_set_pca = as.data.frame(predict(kpca, training_set))
+head(training_set_pca)
+training_set_pca$Customer_Segment = training_set$Customer_Segment
+test_set_pca = as.data.frame(predict(kpca, test_set))
+test_set_pca$Customer_Segment = test_set$Customer_Segment
