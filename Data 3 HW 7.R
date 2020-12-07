@@ -108,13 +108,77 @@ shoes_4[is.na(shoes_4)] <- 0
 #really reduce the # size so we have a smaller set!
 
 
-train=sample(1:nrow(shoes_4), 9000)
-class(shoes_4)
-shoes_4<-as.data.frame(shoes_4)
-shoes_k = kpca(~., data = shoes_4[train,], kernel = 'rbfdot', features = 4)
+min=sample(1:nrow(shoes_4), 1000)
+shoes_5<-shoes_4[min,]
 
-training_set_pca = as.data.frame(predict(kpca, training_set))
+shoes_5<-as.data.frame(shoes_5)
+train=sample(1:nrow(shoes_5), 500)
+shoes_k = kpca(~., data = shoes_5[-train,], kernel = 'rbfdot', features = 4)
+
+training_set_pca = as.data.frame(predict(shoes_k, shoes_5[train,]))
 head(training_set_pca)
-training_set_pca$Customer_Segment = training_set$Customer_Segment
-test_set_pca = as.data.frame(predict(kpca, test_set))
-test_set_pca$Customer_Segment = test_set$Customer_Segment
+View(training_set_pca)
+
+#scatter plots 
+km.out=kmeans(training_set_pca , 3, nstart =20)
+km.out$cluster
+plot(kmean_loading, col=(km.out$cluster +1), main="K-Means Clustering Results with K=3",  pch=20, cex=2)
+
+k2<-as.factor(km.out$cluster)
+km_plot<-ggplot(training_set_pca, aes(x=V1, y=V2, color = k2))+geom_point()
+km_plot
+
+#repeat w/ other kernals?
+shoes_k = kpca(~., data = shoes_5[-train,], kernel = 'laplacedot', features = 4)
+training_set_pca = as.data.frame(predict(shoes_k, shoes_5[train,]))
+#scatter plots 
+km.out=kmeans(training_set_pca , 3, nstart =20)
+km.out$cluster
+plot(kmean_loading, col=(km.out$cluster +1), main="K-Means Clustering Results with K=3",  pch=20, cex=2)
+k2<-as.factor(km.out$cluster)
+km_plot<-ggplot(training_set_pca, aes(x=V1, y=V2, color = k2))+geom_point()
+km_plot
+#doesn't seem to work w/ other kernals (tried polydot, vanilladot, splinedot)
+
+#repeat w/ other kernals? NOPE
+shoes_k = kpca(~., data = shoes_5[-train,], kernel = 'polydot', features = 4)
+training_set_pca = as.data.frame(predict(shoes_k, shoes_5[train,]))
+#scatter plots 
+km.out=kmeans(training_set_pca , 3, nstart =20)
+km.out$cluster
+plot(kmean_loading, col=(km.out$cluster +1), main="K-Means Clustering Results with K=3",  pch=20, cex=2)
+k2<-as.factor(km.out$cluster)
+km_plot<-ggplot(training_set_pca, aes(x=V1, y=V2, color = k2))+geom_point()
+km_plot
+
+#5.
+library(Biobase)
+library(NMF)
+#performing a 'single run' of the NMF algo
+res <- nmf(shoes[train,], 3, method = 'lee')
+#note need to specify method in our argument?
+??nmf
+
+#fitted(res) pulls out or fitted matrice, the command below autoplots our first 6 images
+V.hat <- fitted(res)
+class(V.hat)
+for (i in 1:6) {
+  image(rotate(matrix(V.hat[i,], nrow=sqrt(ncol(V.hat)))))  
+}
+
+#6.
+library(lle)
+
+k40 <- lle(X=shoes_5, m=2, k=5, reg=2, ss=FALSE, id=TRUE, v=0.9 )
+View(k40)
+names(k40)
+k40$Y
+
+lle_pca<-k40$Y
+lle_pca<-as.data.frame(lle_pca)
+#scatter plots 
+km.out=kmeans(lle_pca , 3, nstart =20)
+km.out$cluster
+k2<-as.factor(km.out$cluster)
+km_plot<-ggplot(lle_pca, aes(x=V1, y=V2, color = k2))+geom_point()
+km_plot
